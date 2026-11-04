@@ -1293,7 +1293,7 @@ function App() {
           </div>
         </div>
 
-        {/* Правая колонка: Статистика + Множители */}
+        {/* Правая колонка: Статистика */}
         <div className="lg:col-span-6 space-y-3">
           {/* Статистика домов */}
           <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
@@ -1396,41 +1396,6 @@ function App() {
                   </span>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Множители категорий */}
-          <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-semibold text-amber-300">📊 Множители категорий</h2>
-              <button
-                onClick={() => setMultipliers(DEFAULT_MULTIPLIERS)}
-                className="text-xs text-gray-500 hover:text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 transition-colors"
-              >
-                ↺
-              </button>
-            </div>
-            <div className="space-y-1.5">
-              {(Object.keys(multipliers) as ItemCategory[]).map(cat => (
-                <div key={cat} className="flex justify-between items-center gap-1">
-                  <span className={`text-xs ${CATEGORY_COLORS[cat]}`}>
-                    {CATEGORY_ICONS[cat]} {cat}
-                  </span>
-                  <div className="flex items-center gap-0.5">
-                    <span className="text-gray-600 text-xs">×</span>
-                    <input
-                      type="number"
-                      value={multipliers[cat]}
-                      onChange={e => {
-                        const v = Math.max(0, Number(e.target.value));
-                        setMultipliers(prev => ({ ...prev, [cat]: v }));
-                      }}
-                      min="0" step="0.5"
-                      className="w-14 bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-center text-xs font-mono text-gray-300 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
 
