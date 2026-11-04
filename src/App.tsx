@@ -50,6 +50,7 @@ interface RunData {
   hasKush: boolean;
   members: PartyMember[];
   items: Item[];
+  allMercenaries?: PartyMember[];
 }
 
 // === КОНСТАНТЫ ===
@@ -275,6 +276,9 @@ function App() {
     }
   }, []);
 
+  // --- Все наёмники (история) ---
+  const [allMercenaries, setAllMercenaries] = useState<PartyMember[]>([]);
+
   // Получить текущие данные забега
   const getCurrentRunData = useCallback((): RunData => {
     return {
@@ -301,13 +305,14 @@ function App() {
       hasKush,
       members,
       items,
+      allMercenaries,
     };
-  }, [runName, currentSetting, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, multipliersBySetting, kushName, kushPrice, hasKush, members, items]);
+  }, [runName, currentSetting, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, multipliersBySetting, kushName, kushPrice, hasKush, members, items, allMercenaries]);
 
   // Загрузить данные забега
   const loadRunData = useCallback((data: RunData) => {
     setRunName(data.runName);
-    setCurrentSetting(data.currentSetting || 'Город');
+    setCurrentSetting(data.currentSetting || 'Перекрёсток');
     setCleanRunBonus(data.cleanRunBonus);
     setPredictorPercent(data.predictorPercent);
     setMercenaryCost(data.mercenaryCost);
@@ -331,6 +336,9 @@ function App() {
     setHasKush(data.hasKush);
     setMembers(data.members);
     setItems(data.items);
+    if (data.allMercenaries) {
+      setAllMercenaries(data.allMercenaries);
+    }
   }, []);
 
   // Сохранить текущий забег
@@ -646,25 +654,55 @@ function App() {
     };
   }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, members, currentSetting, houseReputationManual, housePowerManual]);
 
-  // Завершить забег - обновить статистику наёмников
+  // Завершить забег - сохранить в JSON и сбросить участников/лут
   const finishRun = useCallback(() => {
-    // Здесь можно добавить логику обновления репутации наёмников
-    // Например, увеличивать репутацию за успешные забеги
-    // Пока просто сохраняем текущее состояние
-    console.log('Забег завершён', {
-      runName,
-      totalGM: calc.totalGM,
-      members: members.map(m => ({ name: m.name, reputation: m.reputation }))
+    // 1. Добавляем текущих участников в общий список (если их там нет)
+    setAllMercenaries(prev => {
+      const existingNames = new Set(prev.map(m => m.name));
+      const newMercs = members.filter(m => !existingNames.has(m.name));
+      return [...prev, ...newMercs];
     });
+
+    // 2. Сохраняем текущий забег в JSON файл
+    const runData = getCurrentRunData();
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      runs: [{
+        id: Date.now().toString(),
+        name: runName,
+        timestamp: Date.now(),
+        data: runData,
+      }],
+    };
     
-    // Можно добавить автоматическое обновление репутации
-    // setMembers(prev => prev.map(m => ({
-    //   ...m,
-    //   reputation: Math.min(100, m.reputation + 5) // например, +5 за забег
-    // })));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `run-${runName.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
     
-    alert(`Забег "${runName}" завершён!\nПолучено: ${calc.totalGM} ГМ`);
-  }, [runName, calc, members]);
+    setTimeout(() => {
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+
+    // 3. Сбрасываем участников и лут
+    setItems([]);
+    setMembers([]);
+    
+    // 4. Увеличиваем номер забега
+    const match = runName.match(/#(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1]) + 1;
+      setRunName(runName.replace(/#\d+$/, `#${num}`));
+    }
+
+    alert(`Забег "${runName}" завершён и сохранён!\nПолучено: ${calc.totalGM} ГМ\n\nУчастники и лут сброшены.`);
+  }, [runName, calc.totalGM, members, getCurrentRunData]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-3 md:p-5">
@@ -2054,33 +2092,36 @@ function App() {
         {/* Правая колонка: Репутация наёмников */}
         <div className="lg:col-span-6 space-y-3">
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-            <h2 className="text-sm font-semibold text-amber-300 mb-3">🗡 Репутация Наёмников</h2>
-            {members.length === 0 ? (
-              <p className="text-gray-500 text-center py-4 text-sm">Нет наёмников</p>
+            <h2 className="text-sm font-semibold text-amber-300 mb-3">🗡 Все Наёмники ({allMercenaries.length})</h2>
+            {allMercenaries.length === 0 ? (
+              <p className="text-gray-500 text-center py-4 text-sm">Нет наёмников. Завершите забег, чтобы добавить участников.</p>
             ) : (
-              <div className="space-y-3">
-                {members.map(m => (
-                  <div key={m.id} className="bg-gray-700/50 rounded p-3">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-200 font-semibold">{m.name}</span>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={m.reputation}
-                          onChange={e => updateMember(m.id, 'reputation', Math.max(0, Math.min(100, Number(e.target.value))))}
-                          min="0" max="100"
-                          className={`w-16 bg-gray-700 border rounded px-2 py-1 text-center text-sm font-mono focus:outline-none ${
-                            m.reputation >= 75 ? 'border-green-600 text-green-400' :
-                            m.reputation >= 50 ? 'border-yellow-600 text-yellow-400' :
-                            m.reputation >= 25 ? 'border-orange-600 text-orange-400' :
-                            'border-red-600 text-red-400'
-                          }`}
-                        />
-                      </div>
+              <div className="space-y-2">
+                {allMercenaries.map(m => (
+                  <div key={m.id} className="bg-gray-700/50 rounded p-2 flex items-center gap-2">
+                    <span className="text-sm text-gray-200 flex-1">{m.name}</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={m.reputation}
+                        onChange={e => {
+                          const newValue = Math.max(0, Math.min(100, Number(e.target.value)));
+                          setAllMercenaries(prev => prev.map(merc => 
+                            merc.id === m.id ? { ...merc, reputation: newValue } : merc
+                          ));
+                        }}
+                        min="0" max="100"
+                        className={`w-14 bg-gray-700 border rounded px-2 py-1 text-center text-sm font-mono focus:outline-none ${
+                          m.reputation >= 75 ? 'border-green-600 text-green-400' :
+                          m.reputation >= 50 ? 'border-yellow-600 text-yellow-400' :
+                          m.reputation >= 25 ? 'border-orange-600 text-orange-400' :
+                          'border-red-600 text-red-400'
+                        }`}
+                      />
                     </div>
-                    <div className="w-full bg-gray-600 rounded-full h-2 mb-2">
+                    <div className="w-20 bg-gray-600 rounded-full h-1.5">
                       <div
-                        className={`h-2 rounded-full transition-all ${
+                        className={`h-1.5 rounded-full transition-all ${
                           m.reputation >= 75 ? 'bg-green-500' :
                           m.reputation >= 50 ? 'bg-yellow-500' :
                           m.reputation >= 25 ? 'bg-orange-500' :
@@ -2088,15 +2129,6 @@ function App() {
                         }`}
                         style={{ width: `${m.reputation}%` }}
                       />
-                    </div>
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-400">Доля: {m.sharePercent}%</span>
-                      <span className="text-gray-400">
-                        {m.reputation >= 75 ? '⭐ Мастер' :
-                         m.reputation >= 50 ? '✓ Опытный' :
-                         m.reputation >= 25 ? '• Новичок' :
-                         '⚠ Ненадёжный'}
-                      </span>
                     </div>
                   </div>
                 ))}
@@ -2106,13 +2138,13 @@ function App() {
 
           {/* Справка по репутации */}
           <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
-            <h3 className="text-xs font-semibold text-gray-500 mb-1.5">💡 Как считается репутация</h3>
+            <h3 className="text-xs font-semibold text-gray-500 mb-1.5">💡 Как работает статистика</h3>
             <div className="text-xs text-gray-600 space-y-0.5">
               <p>• <strong className="text-gray-400">Дома</strong>: репутация и сила устанавливаются вручную</p>
               <p>• <strong className="text-gray-400">Гильдия</strong>: средняя репутация всех домов</p>
-              <p>• <strong className="text-gray-400">Наёмники</strong>: репутация устанавливается вручную (0-100)</p>
-              <p>• <strong className="text-gray-400">Ранги</strong>: ⭐ Мастер (75+), ✓ Опытный (50+), • Новичок (25+), ⚠ Ненадёжный (&lt;25)</p>
-              <p className="mt-1 text-gray-500">Кнопка "Завершить забег" на вкладке "Забег" фиксирует результаты</p>
+              <p>• <strong className="text-gray-400">Наёмники</strong>: добавляются при завершении забега</p>
+              <p>• <strong className="text-gray-400">Репутация</strong>: меняется вручную (0-100)</p>
+              <p className="mt-1 text-gray-500">Кнопка "Завершить забег" сохраняет результаты в JSON и сбрасывает участников</p>
             </div>
           </div>
         </div>
