@@ -264,6 +264,9 @@ function App() {
   // --- Вкладки ---
   const [activeTab, setActiveTab] = useState<'run' | 'houses' | 'stats'>('run');
 
+  // --- Все наёмники (история) ---
+  const [allMercenaries, setAllMercenaries] = useState<PartyMember[]>([]);
+
   // Загрузка сохранённых забегов и наёмников из localStorage при старте
   useEffect(() => {
     // Сначала загружаем наёмников из отдельного хранилища (они приоритетнее)
@@ -307,9 +310,6 @@ function App() {
       }
     }
   }, []);
-
-  // --- Все наёмники (история) ---
-  const [allMercenaries, setAllMercenaries] = useState<PartyMember[]>([]);
 
   // Автосохранение наёмников в localStorage при каждом изменении
   useEffect(() => {
