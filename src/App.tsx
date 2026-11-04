@@ -59,11 +59,13 @@ const DEFAULT_MULTIPLIERS: Record<string, number> = {
   'редкие': 5.0,
   'люди': 8.0,
   'артефакты': 15.0,
-  'скот': 1.5,
   'документы': 4.0,
   'монстры': 6.0,
   'магические предметы': 10.0,
-  'груз': 2.0,
+  'техника': 7.0,
+  'припасы': 1.5,
+  'антиквариат': 6.0,
+  'данные': 9.0,
 };
 
 const getCategoryIcon = (cat: string): string => {
@@ -73,11 +75,13 @@ const getCategoryIcon = (cat: string): string => {
     'редкие': '📜',
     'люди': '👤',
     'артефакты': '💎',
-    'скот': '🐄',
     'документы': '📋',
     'монстры': '👹',
     'магические предметы': '✨',
-    'груз': '📦',
+    'техника': '⚙',
+    'припасы': '🥫',
+    'антиквариат': '🏺',
+    'данные': '💾',
   };
   return icons[cat] || '🎒';
 };
@@ -89,11 +93,13 @@ const getCategoryColor = (cat: string): string => {
     'редкие': 'text-purple-400',
     'люди': 'text-red-400',
     'артефакты': 'text-cyan-400',
-    'скот': 'text-green-400',
     'документы': 'text-blue-400',
     'монстры': 'text-orange-400',
     'магические предметы': 'text-pink-400',
-    'груз': 'text-amber-400',
+    'техника': 'text-lime-400',
+    'припасы': 'text-green-400',
+    'антиквариат': 'text-amber-400',
+    'данные': 'text-indigo-400',
   };
   return colors[cat] || 'text-gray-300';
 };
@@ -150,9 +156,9 @@ function App() {
 
   // --- Добыча ---
   const [items, setItems] = useState<Item[]>([
-    { id: '1', name: 'Серебряные украшения', category: 'обычные вещи', basePrice: 5, quantity: 3, stolen: true },
-    { id: '2', name: 'Золотой перстень', category: 'дорогие вещи', basePrice: 12, quantity: 1, stolen: true },
-    { id: '3', name: 'Зашифрованный свиток', category: 'редкие', basePrice: 20, quantity: 1, stolen: true },
+    { id: '1', name: 'Кошелёк купца', category: 'обычные вещи', basePrice: 5, quantity: 3, stolen: true },
+    { id: '2', name: 'Серебряный подсвечник', category: 'дорогие вещи', basePrice: 12, quantity: 1, stolen: true },
+    { id: '3', name: 'Запечатанное письмо', category: 'документы', basePrice: 20, quantity: 1, stolen: true },
   ]);
 
   // --- Сохранение/загрузка ---
@@ -165,29 +171,34 @@ function App() {
   const [activeTab, setActiveTab] = useState<'run' | 'houses'>('run');
 
   // --- Сеттинг ---
-  const [currentSetting, setCurrentSetting] = useState<string>('Город');
+  const [currentSetting, setCurrentSetting] = useState<string>('Перекрёсток');
   
   // Определения сеттингов с их категориями
   const SETTINGS = {
-    'Город': {
-      categories: ['обычные вещи', 'дорогие вещи', 'редкие', 'люди', 'артефакты'],
-      icon: '🏙',
+    'Перекрёсток': {
+      categories: ['обычные вещи', 'дорогие вещи', 'редкие', 'люди', 'документы'],
+      icon: '🛣',
+      desc: 'Обычный мир',
     },
-    'Деревня': {
-      categories: ['обычные вещи', 'дорогие вещи', 'скот', 'редкие'],
-      icon: '🏘',
+    'Фронтир': {
+      categories: ['обычные вещи', 'редкие', 'техника', 'припасы', 'артефакты'],
+      icon: '☢',
+      desc: 'Пост-апокалипсис',
     },
-    'Дворец': {
-      categories: ['дорогие вещи', 'редкие', 'артефакты', 'люди', 'документы'],
-      icon: '🏰',
+    'КСБ': {
+      categories: ['обычные вещи', 'дорогие вещи', 'редкие', 'люди', 'документы', 'антиквариат'],
+      icon: '👑',
+      desc: 'Российская империя 17-18 вв.',
     },
-    'Подземелье': {
-      categories: ['обычные вещи', 'редкие', 'артефакты', 'монстры', 'магические предметы'],
-      icon: '⚔',
+    'Андураль': {
+      categories: ['обычные вещи', 'редкие', 'артефакты', 'магические предметы', 'монстры', 'люди'],
+      icon: '🐉',
+      desc: 'Фэнтези',
     },
-    'Корабль': {
-      categories: ['обычные вещи', 'дорогие вещи', 'редкие', 'груз', 'артефакты'],
-      icon: '⛵',
+    'Нью-Элизиум': {
+      categories: ['обычные вещи', 'дорогие вещи', 'редкие', 'техника', 'данные', 'люди'],
+      icon: '🌃',
+      desc: 'Киберпанк',
     },
   };
 
@@ -658,6 +669,9 @@ function App() {
                     <option key={name} value={name}>{data.icon} {name}</option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-500 mt-0.5 italic">
+                  {SETTINGS[currentSetting as keyof typeof SETTINGS].desc}
+                </p>
                 <p className="text-xs text-gray-600 mt-0.5">
                   Категории: {SETTINGS[currentSetting as keyof typeof SETTINGS].categories.join(', ')}
                 </p>
