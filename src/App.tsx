@@ -267,9 +267,31 @@ function App() {
   // --- Все наёмники (история) ---
   const [allMercenaries, setAllMercenaries] = useState<PartyMember[]>([]);
 
-  // Загрузка сохранённых забегов и наёмников из localStorage при старте
+  // Загрузка всех данных из localStorage при старте
   useEffect(() => {
-    // Сначала загружаем наёмников из отдельного хранилища (они приоритетнее)
+    // Загружаем игровые данные (дома, множители, настройки)
+    const savedGameData = localStorage.getItem('gameData');
+    if (savedGameData) {
+      try {
+        const gameData = JSON.parse(savedGameData);
+        if (gameData.houseMavo !== undefined) setHouseMavo(gameData.houseMavo);
+        if (gameData.houseAccounting !== undefined) setHouseAccounting(gameData.houseAccounting);
+        if (gameData.houseFamily !== undefined) setHouseFamily(gameData.houseFamily);
+        if (gameData.houseGuildmaster !== undefined) setHouseGuildmaster(gameData.houseGuildmaster);
+        if (gameData.houseServants !== undefined) setHouseServants(gameData.houseServants);
+        if (gameData.housePatronage !== undefined) setHousePatronage(gameData.housePatronage);
+        if (gameData.houseJustice !== undefined) setHouseJustice(gameData.houseJustice);
+        if (gameData.houseReputationManual) setHouseReputationManual(gameData.houseReputationManual);
+        if (gameData.housePowerManual) setHousePowerManual(gameData.housePowerManual);
+        if (gameData.multipliersBySetting) setMultipliersBySetting(gameData.multipliersBySetting);
+        if (gameData.treasuryStandard !== undefined) setTreasuryStandard(gameData.treasuryStandard);
+        if (gameData.baseCourseAtStandard !== undefined) setBaseCourseAtStandard(gameData.baseCourseAtStandard);
+      } catch (e) {
+        console.error('Failed to load game data:', e);
+      }
+    }
+
+    // Загружаем наёмников из отдельного хранилища (они приоритетнее)
     const savedMercs = localStorage.getItem('allMercenaries');
     if (savedMercs) {
       try {
@@ -315,6 +337,25 @@ function App() {
   useEffect(() => {
     localStorage.setItem('allMercenaries', JSON.stringify(allMercenaries));
   }, [allMercenaries]);
+
+  // Автосохранение всех остальных данных (дома, множители, настройки)
+  useEffect(() => {
+    const gameData = {
+      houseMavo,
+      houseAccounting,
+      houseFamily,
+      houseGuildmaster,
+      houseServants,
+      housePatronage,
+      houseJustice,
+      houseReputationManual,
+      housePowerManual,
+      multipliersBySetting,
+      treasuryStandard,
+      baseCourseAtStandard,
+    };
+    localStorage.setItem('gameData', JSON.stringify(gameData));
+  }, [houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, houseReputationManual, housePowerManual, multipliersBySetting, treasuryStandard, baseCourseAtStandard]);
 
   // Получить текущие данные забега
   const getCurrentRunData = useCallback((): RunData => {
