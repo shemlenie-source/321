@@ -174,17 +174,18 @@ function App() {
     // 7. Итого к распределению
     const distributable = afterPenalty - predictorCut;
 
-    // 8. В гильдейских монетах
-    const totalGM = distributable / baseRate;
-    const penaltyGM = penalty / baseRate;
-    const predictorGM = predictorCut / baseRate;
-    const lootWithBonusGM = lootWithBonus / baseRate;
+    // 8. В гильдейских монетах (всегда целые, округление вниз)
+    const totalGM = Math.floor(distributable / baseRate);
+    const penaltyGM = Math.floor(penalty / baseRate);
+    const predictorGM = Math.floor(predictorCut / baseRate);
+    const lootWithBonusGM = Math.floor(lootWithBonus / baseRate);
+    const mercenaryCostGM = Math.floor(mercenaryCost / baseRate);
 
-    // 9. Распределение по участникам
+    // 9. Распределение по участникам (каждый получает целое число ГМ)
     const totalShares = members.reduce((s, m) => s + m.sharePercent, 0);
     const memberPayouts = members.map(m => {
       const fraction = totalShares > 0 ? m.sharePercent / totalShares : 0;
-      const payoutGM = totalGM * fraction;
+      const payoutGM = Math.floor(totalGM * fraction);
       return { ...m, payoutGM };
     });
 
@@ -201,10 +202,11 @@ function App() {
       predictorGM,
       distributable,
       totalGM,
+      mercenaryCostGM,
       perCategory,
       memberPayouts,
       totalShares,
-      isInDebt: distributable < 0,
+      isInDebt: totalGM < 0,
     };
   }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, baseRate, members]);
 
@@ -310,7 +312,7 @@ function App() {
                   min="0" step="5"
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-red-500"
                 />
-                <p className="text-xs text-gray-600 mt-0.5">= {(mercenaryCost / baseRate).toFixed(1)} ГМ за голову</p>
+                <p className="text-xs text-gray-600 mt-0.5">= {calc.mercenaryCostGM} ГМ за голову</p>
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-0.5">Погибло наёмников</label>
@@ -327,7 +329,7 @@ function App() {
                 </div>
                 {calc.penalty > 0 && (
                   <p className="text-xs text-red-400 mt-1">
-                    Штраф: −{calc.penalty.toFixed(0)} ед. (−{calc.penaltyGM.toFixed(1)} ГМ)
+                    Штраф: −{calc.penalty.toFixed(0)} ед. (−{calc.penaltyGM} ГМ)
                   </p>
                 )}
               </div>
@@ -350,7 +352,7 @@ function App() {
               />
               {calc.predictorCut > 0 && (
                 <p className="text-xs text-indigo-400 mt-1">
-                  Забирает: {calc.predictorCut.toFixed(1)} ед. ({calc.predictorGM.toFixed(1)} ГМ)
+                  Забирает: {calc.predictorCut.toFixed(1)} ед. ({calc.predictorGM} ГМ)
                 </p>
               )}
             </div>
@@ -592,7 +594,7 @@ function App() {
                 <div className="flex justify-between">
                   <span className="text-gray-200 font-semibold">К распределению:</span>
                   <span className={`font-mono text-lg font-bold ${calc.isInDebt ? 'text-red-400' : 'text-amber-400'}`}>
-                    {calc.totalGM.toFixed(2)} ГМ
+                    {calc.totalGM} ГМ
                   </span>
                 </div>
                 <div className="flex justify-between text-gray-500">
@@ -604,7 +606,7 @@ function App() {
               {calc.isInDebt && (
                 <div className="mt-2 p-2 bg-red-900/30 rounded border border-red-800/50">
                   <p className="text-red-400 text-xs font-semibold">
-                    ⚠ Группа должна гильдии {Math.abs(calc.totalGM).toFixed(2)} ГМ!
+                    ⚠ Группа должна гильдии {Math.abs(calc.totalGM)} ГМ!
                   </p>
                   <p className="text-red-400/70 text-xs mt-0.5">
                     Штрафы за погибших превысили добычу.
@@ -653,7 +655,7 @@ function App() {
                       <span className="text-gray-300 flex-1 min-w-0 truncate">{m.name}</span>
                       <span className="text-gray-500 font-mono shrink-0">{m.sharePercent}%</span>
                       <span className={`font-mono shrink-0 w-20 text-right font-semibold ${m.payoutGM < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                        {m.payoutGM >= 0 ? '+' : ''}{m.payoutGM.toFixed(2)} ГМ
+                        {m.payoutGM >= 0 ? '+' : ''}{m.payoutGM} ГМ
                       </span>
                       {/* Мини-барчарт */}
                       <div className="w-12 h-2 bg-gray-700 rounded-full overflow-hidden shrink-0">
