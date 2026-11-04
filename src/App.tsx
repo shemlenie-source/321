@@ -104,6 +104,24 @@ const getCategoryColor = (cat: string): string => {
   return colors[cat] || 'text-gray-300';
 };
 
+const getCategoryColorHex = (cat: string): string => {
+  const colors: Record<string, string> = {
+    'обычные вещи': '#d1d5db', // gray-300
+    'дорогие вещи': '#facc15', // yellow-400
+    'редкие': '#c084fc', // purple-400
+    'люди': '#f87171', // red-400
+    'артефакты': '#22d3ee', // cyan-400
+    'документы': '#60a5fa', // blue-400
+    'монстры': '#fb923c', // orange-400
+    'магические предметы': '#f472b6', // pink-400
+    'техника': '#a3e635', // lime-400
+    'припасы': '#4ade80', // green-400
+    'антиквариат': '#fbbf24', // amber-400
+    'данные': '#818cf8', // indigo-400
+  };
+  return colors[cat] || '#d1d5db';
+};
+
 const DEFAULT_NAMES = [
   'Безымянный вор', 'Тень', 'Клинок', 'Ворон', 'Шепот',
   'Крыса', 'Призрак', 'Змей', 'Лис', 'Ястреб',
@@ -900,7 +918,9 @@ function App() {
                               className={`bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500 ${getCategoryColor(item.category)}`}
                             >
                               {SETTINGS[currentSetting as keyof typeof SETTINGS].categories.map(c => (
-                                <option key={c} value={c}>{c}</option>
+                                <option key={c} value={c} style={{ color: getCategoryColorHex(c) }}>
+                                  {getCategoryIcon(c)} {c}
+                                </option>
                               ))}
                             </select>
                           </td>
