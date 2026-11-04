@@ -43,7 +43,7 @@ interface RunData {
   justicePercent: number;
   treasuryStandard: number;
   baseCourseAtStandard: number;
-  multipliers: Record<string, number>;
+  multipliersBySetting: Record<string, Record<string, number>>;
   kushName: string;
   kushPrice: number;
   hasKush: boolean;
@@ -155,8 +155,32 @@ function App() {
   const [servantsPercent, setServantsPercent] = useState(5); // Дом Слуг получает 5% со всех
   const [justicePercent, setJusticePercent] = useState(3); // Дом Правосудия получает 3% (кроме слуг и гильдмастера)
 
-  // --- Множители ---
-  const [multipliers, setMultipliers] = useState<Record<ItemCategory, number>>(DEFAULT_MULTIPLIERS);
+  // --- Сеттинг ---
+  const [currentSetting, setCurrentSetting] = useState<string>('Перекрёсток');
+  
+  // --- Множители (отдельные для каждого сеттинга) ---
+  const [multipliersBySetting, setMultipliersBySetting] = useState<Record<string, Record<string, number>>>(() => {
+    // Инициализируем множители для всех сеттингов
+    const initial: Record<string, Record<string, number>> = {};
+    Object.entries(SETTINGS).forEach(([settingName, settingData]) => {
+      initial[settingName] = {};
+      settingData.categories.forEach(cat => {
+        initial[settingName][cat] = DEFAULT_MULTIPLIERS[cat] || 1.0;
+      });
+    });
+    return initial;
+  });
+  
+  // Получаем множители для текущего сеттинга
+  const multipliers = multipliersBySetting[currentSetting] || {};
+  
+  // Функция для обновления множителей текущего сеттинга
+  const setMultipliers = useCallback((newMultipliers: Record<string, number>) => {
+    setMultipliersBySetting(prev => ({
+      ...prev,
+      [currentSetting]: newMultipliers
+    }));
+  }, [currentSetting]);
 
   // --- Куш ---
   const [kushName, setKushName] = useState('Куш');
@@ -187,9 +211,6 @@ function App() {
 
   // --- Вкладки ---
   const [activeTab, setActiveTab] = useState<'run' | 'houses'>('run');
-
-  // --- Сеттинг ---
-  const [currentSetting, setCurrentSetting] = useState<string>('Перекрёсток');
   
   // Определения сеттингов с их категориями
   const SETTINGS = {
@@ -252,14 +273,14 @@ function App() {
       justicePercent,
       treasuryStandard,
       baseCourseAtStandard,
-      multipliers,
+      multipliersBySetting,
       kushName,
       kushPrice,
       hasKush,
       members,
       items,
     };
-  }, [runName, currentSetting, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, multipliers, kushName, kushPrice, hasKush, members, items]);
+  }, [runName, currentSetting, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, multipliersBySetting, kushName, kushPrice, hasKush, members, items]);
 
   // Загрузить данные забега
   const loadRunData = useCallback((data: RunData) => {
@@ -280,7 +301,9 @@ function App() {
     setJusticePercent(data.justicePercent);
     setTreasuryStandard(data.treasuryStandard);
     setBaseCourseAtStandard(data.baseCourseAtStandard);
-    setMultipliers(data.multipliers);
+    if (data.multipliersBySetting) {
+      setMultipliersBySetting(data.multipliersBySetting);
+    }
     setKushName(data.kushName);
     setKushPrice(data.kushPrice);
     setHasKush(data.hasKush);
@@ -741,7 +764,7 @@ function App() {
                       value={multipliers[cat] || DEFAULT_MULTIPLIERS[cat] || 1.0}
                       onChange={e => {
                         const v = Math.max(0, Number(e.target.value));
-                        setMultipliers(prev => ({ ...prev, [cat]: v }));
+                        setMultipliers({ ...multipliers, [cat]: v });
                       }}
                       min="0" step="0.5"
                       className="w-14 bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-center text-xs font-mono text-gray-300 focus:outline-none focus:border-amber-500"
