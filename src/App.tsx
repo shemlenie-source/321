@@ -16,6 +16,7 @@ interface PartyMember {
   id: string;
   name: string;
   sharePercent: number;
+  reputation: number;
 }
 
 interface SavedRun {
@@ -218,11 +219,11 @@ function App() {
 
   // --- Участники ---
   const [members, setMembers] = useState<PartyMember[]>([
-    { id: '1', name: 'Первый', sharePercent: 20 },
-    { id: '2', name: 'Второй', sharePercent: 20 },
-    { id: '3', name: 'Третий', sharePercent: 20 },
-    { id: '4', name: 'Четвёртый', sharePercent: 20 },
-    { id: '5', name: 'Пятый', sharePercent: 20 },
+    { id: '1', name: 'Первый', sharePercent: 20, reputation: 50 },
+    { id: '2', name: 'Второй', sharePercent: 20, reputation: 50 },
+    { id: '3', name: 'Третий', sharePercent: 20, reputation: 50 },
+    { id: '4', name: 'Четвёртый', sharePercent: 20, reputation: 50 },
+    { id: '5', name: 'Пятый', sharePercent: 20, reputation: 50 },
   ]);
 
   // --- Добыча ---
@@ -239,7 +240,7 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Вкладки ---
-  const [activeTab, setActiveTab] = useState<'run' | 'houses'>('run');
+  const [activeTab, setActiveTab] = useState<'run' | 'houses' | 'stats'>('run');
 
   // Загрузка сохранённых забегов из localStorage при старте
   useEffect(() => {
@@ -427,6 +428,7 @@ function App() {
       id: Date.now().toString(),
       name: DEFAULT_NAMES[idx % DEFAULT_NAMES.length] || `Наёмник #${idx + 1}`,
       sharePercent: 0,
+      reputation: 50,
     }]);
   }, [members.length]);
 
@@ -574,6 +576,32 @@ function App() {
       return { ...m, payoutGM };
     });
 
+    // 10. Расчёт репутации домов (0-100)
+    // Репутация = (доля дома в казне / 25%) * 100, где 25% - идеальная доля
+    const houseReputation = {
+      mavo: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.mavo.percent / 25) * 100)) : 0,
+      accounting: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.accounting.percent / 25) * 100)) : 0,
+      family: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.family.percent / 25) * 100)) : 0,
+      guildmaster: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.guildmaster.percent / 25) * 100)) : 0,
+    };
+
+    // 11. Репутация гильдмастера = средний рейтинг всех домов
+    const guildmasterReputation = Math.round(
+      (houseReputation.mavo + houseReputation.accounting + houseReputation.family + houseReputation.guildmaster) / 4
+    );
+
+    // 12. Репутация специальных домов (на основе их монет)
+    const specialHouseReputation = {
+      servants: Math.min(100, Math.round((houseServants / 10000) * 100)),
+      patronage: Math.min(100, Math.round((housePatronage / 10000) * 100)),
+      justice: Math.min(100, Math.round((houseJustice / 10000) * 100)),
+    };
+
+    // 13. Общая репутация гильдии
+    const guildReputation = Math.round(
+      (guildmasterReputation + specialHouseReputation.servants + specialHouseReputation.patronage + specialHouseReputation.justice) / 4
+    );
+
     return {
       lootSum,
       kushValue,
@@ -598,6 +626,10 @@ function App() {
       memberPayouts,
       totalShares,
       isInDebt: totalGM < 0,
+      houseReputation,
+      guildmasterReputation,
+      specialHouseReputation,
+      guildReputation,
     };
   }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, members, currentSetting]);
 
@@ -672,6 +704,16 @@ function App() {
             }`}
           >
             🏛 Дома Гильдии
+          </button>
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`flex-1 px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+              activeTab === 'stats'
+                ? 'bg-amber-600 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+            }`}
+          >
+            📊 Статистика
           </button>
         </div>
       </div>
@@ -881,6 +923,20 @@ function App() {
                       className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-center text-xs font-mono focus:outline-none focus:border-amber-500"
                     />
                     <span className="text-gray-500 text-xs">%</span>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0" title="Репутация">
+                    <input
+                      type="number"
+                      value={m.reputation}
+                      onChange={e => updateMember(m.id, 'reputation', Math.max(0, Math.min(100, Number(e.target.value))))}
+                      min="0" max="100" step="1"
+                      className={`w-10 bg-gray-700 border rounded px-1 py-0.5 text-center text-xs font-mono focus:outline-none focus:border-amber-500 ${
+                        m.reputation >= 75 ? 'border-green-600 text-green-400' :
+                        m.reputation >= 50 ? 'border-yellow-600 text-yellow-400' :
+                        m.reputation >= 25 ? 'border-orange-600 text-orange-400' :
+                        'border-red-600 text-red-400'
+                      }`}
+                    />
                   </div>
                   <button
                     onClick={() => removeMember(m.id)}
@@ -1516,6 +1572,228 @@ function App() {
               <p>Слуги += ⌊казна × servants%⌋</p>
               <p>Правосудие += ⌊(М+Б+С) × justice%⌋</p>
               <p>курс = базовый × (казна ÷ стандарт)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {activeTab === 'stats' && (
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* Левая колонка: Репутация гильдии и домов */}
+        <div className="lg:col-span-6 space-y-3">
+          {/* Общая репутация гильдии */}
+          <div className="bg-gray-800 rounded-lg p-4 border border-amber-700/50">
+            <h2 className="text-lg font-semibold text-amber-300 mb-3">🏛 Репутация Гильдии</h2>
+            <div className="flex items-center justify-center mb-3">
+              <div className="relative w-32 h-32">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="none"
+                    className="text-gray-700"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="none"
+                    strokeDasharray={`${(calc.guildReputation / 100) * 351.86} 351.86`}
+                    className={
+                      calc.guildReputation >= 75 ? 'text-green-500' :
+                      calc.guildReputation >= 50 ? 'text-yellow-500' :
+                      calc.guildReputation >= 25 ? 'text-orange-500' :
+                      'text-red-500'
+                    }
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-3xl font-bold text-amber-400">{calc.guildReputation}</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-center text-xs text-gray-400">
+              {calc.guildReputation >= 75 ? 'Превосходная репутация' :
+               calc.guildReputation >= 50 ? 'Хорошая репутация' :
+               calc.guildReputation >= 25 ? 'Средняя репутация' :
+               'Плохая репутация'}
+            </p>
+          </div>
+
+          {/* Репутация основных домов */}
+          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-3">🏰 Репутация Домов</h2>
+            <div className="space-y-3">
+              {/* Дом Маво */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-purple-400">🔮 Дом Маво</span>
+                  <span className="text-xs font-mono text-purple-300">{calc.houseReputation.mavo}/100</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-purple-500 h-2 rounded-full transition-all"
+                    style={{ width: `${calc.houseReputation.mavo}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Дом Бухгалтерии */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-cyan-400">📊 Дом Бухгалтерии</span>
+                  <span className="text-xs font-mono text-cyan-300">{calc.houseReputation.accounting}/100</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-cyan-500 h-2 rounded-full transition-all"
+                    style={{ width: `${calc.houseReputation.accounting}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Дом Семьи */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-red-400">🗡 Дом Семьи</span>
+                  <span className="text-xs font-mono text-red-300">{calc.houseReputation.family}/100</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-red-500 h-2 rounded-full transition-all"
+                    style={{ width: `${calc.houseReputation.family}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Гильдмастер */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-amber-400">👑 Гильдмастер</span>
+                  <span className="text-xs font-mono text-amber-300">{calc.guildmasterReputation}/100</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-amber-500 h-2 rounded-full transition-all"
+                    style={{ width: `${calc.guildmasterReputation}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Репутация специальных домов */}
+          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-3">⚙ Специальные Дома</h2>
+            <div className="space-y-3">
+              {/* Дом Слуг */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-gray-400">🙇 Дом Слуг</span>
+                  <span className="text-xs font-mono text-gray-300">{calc.specialHouseReputation.servants}/100</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-gray-500 h-2 rounded-full transition-all"
+                    style={{ width: `${calc.specialHouseReputation.servants}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Дом Меценатства */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-pink-400">🎭 Дом Меценатства</span>
+                  <span className="text-xs font-mono text-pink-300">{calc.specialHouseReputation.patronage}/100</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-pink-500 h-2 rounded-full transition-all"
+                    style={{ width: `${calc.specialHouseReputation.patronage}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Дом Правосудия */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs text-blue-400">⚖ Дом Правосудия</span>
+                  <span className="text-xs font-mono text-blue-300">{calc.specialHouseReputation.justice}/100</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-blue-500 h-2 rounded-full transition-all"
+                    style={{ width: `${calc.specialHouseReputation.justice}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Правая колонка: Репутация наёмников */}
+        <div className="lg:col-span-6 space-y-3">
+          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-3">🗡 Репутация Наёмников</h2>
+            {members.length === 0 ? (
+              <p className="text-gray-500 text-center py-4 text-sm">Нет наёмников</p>
+            ) : (
+              <div className="space-y-3">
+                {members.map(m => (
+                  <div key={m.id} className="bg-gray-700/50 rounded p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-200 font-semibold">{m.name}</span>
+                      <span className={`text-lg font-bold ${
+                        m.reputation >= 75 ? 'text-green-400' :
+                        m.reputation >= 50 ? 'text-yellow-400' :
+                        m.reputation >= 25 ? 'text-orange-400' :
+                        'text-red-400'
+                      }`}>
+                        {m.reputation}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-600 rounded-full h-2 mb-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          m.reputation >= 75 ? 'bg-green-500' :
+                          m.reputation >= 50 ? 'bg-yellow-500' :
+                          m.reputation >= 25 ? 'bg-orange-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${m.reputation}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-400">Доля: {m.sharePercent}%</span>
+                      <span className="text-gray-400">
+                        {m.reputation >= 75 ? '⭐ Мастер' :
+                         m.reputation >= 50 ? '✓ Опытный' :
+                         m.reputation >= 25 ? '• Новичок' :
+                         '⚠ Ненадёжный'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Справка по репутации */}
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <h3 className="text-xs font-semibold text-gray-500 mb-1.5">💡 Как считается репутация</h3>
+            <div className="text-xs text-gray-600 space-y-0.5">
+              <p>• <strong className="text-gray-400">Дома</strong>: рейтинг зависит от доли в общей казне (25% = 100)</p>
+              <p>• <strong className="text-gray-400">Гильдмастер</strong>: средний рейтинг всех домов</p>
+              <p>• <strong className="text-gray-400">Спец. дома</strong>: рейтинг зависит от количества монет (10000 = 100)</p>
+              <p>• <strong className="text-gray-400">Гильдия</strong>: средний рейтинг всех домов</p>
+              <p>• <strong className="text-gray-400">Наёмники</strong>: личный рейтинг (пока не меняется автоматически)</p>
             </div>
           </div>
         </div>
