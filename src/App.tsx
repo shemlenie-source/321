@@ -531,6 +531,10 @@ function App() {
       if (item.stolen) {
         const val = item.basePrice * item.quantity * (multipliers[item.category] || DEFAULT_MULTIPLIERS[item.category] || 1.0);
         lootSum += val;
+        // Защита от несуществующих категорий
+        if (!perCategory[item.category]) {
+          perCategory[item.category] = { count: 0, value: 0 };
+        }
         perCategory[item.category].count += item.quantity;
         perCategory[item.category].value += val;
       }
