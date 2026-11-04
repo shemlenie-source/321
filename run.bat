@@ -1,55 +1,58 @@
 @echo off
 chcp 65001 >nul
-title Эликса — Помощница Гильдмастера
+title Elixa - Guildmaster Assistant
 echo.
-echo   ╔══════════════════════════════════════════╗
-echo   ║  🖤 Эликса — Помощница Гильдмастера 🖤   ║
-echo   ║     Суккуб-бухгалтер гильдии             ║
-echo   ╚══════════════════════════════════════════╝
+echo   Elixa - Guildmaster Assistant
+echo   =============================
 echo.
 
-REM Проверяем есть ли папка dist
+REM Check if dist folder exists
 if not exist "dist\index.html" (
-    echo [!] Папка dist не найдена. Запускаю сборку...
+    echo [!] dist folder not found. Starting build...
     echo.
     
-    REM Проверяем есть ли node_modules
+    REM Check if node is installed
+    where node >nul 2>nul
+    if %errorlevel% neq 0 (
+        echo [ERROR] Node.js is not installed!
+        echo.
+        echo Please download and install Node.js from:
+        echo https://nodejs.org/
+        echo.
+        pause
+        exit /b 1
+    )
+    
+    REM Install dependencies
     if not exist "node_modules" (
-        echo [!] Устанавливаю зависимости...
+        echo [!] Installing dependencies...
         call npm install
         if errorlevel 1 (
-            echo.
-            echo [ОШИБКА] Не удалось установить зависимости.
-            echo Убедитесь что Node.js установлен: https://nodejs.org/
+            echo [ERROR] Failed to install dependencies.
             pause
             exit /b 1
         )
     )
     
-    echo [!] Собираю проект...
+    echo [!] Building project...
     call npm run build
     if errorlevel 1 (
-        echo.
-        echo [ОШИБКА] Не удалось собрать проект.
+        echo [ERROR] Failed to build project.
         pause
         exit /b 1
     )
     echo.
-    echo [✓] Сборка завершена!
+    echo [OK] Build complete!
     echo.
 )
 
-echo [✓] Открываю приложение в браузере...
+echo [OK] Opening app in browser...
 echo.
 
-REM Открываем index.html в браузере по умолчанию
-start "" "dist\index.html"
+REM Open index.html in default browser
+start "" "%~dp0dist\index.html"
 
 echo.
-echo Приложение открыто в браузере.
-echo Не закрывайте это окно пока работаете с приложением.
-echo.
-echo Нажмите любую клавишу для остановки...
+echo App opened in browser.
+echo Press any key to close this window...
 pause >nul
-
-echo [✓] Эликса засыпает... Спокойной ночи, Гильдмастер! 🖤
