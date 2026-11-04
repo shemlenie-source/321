@@ -151,6 +151,27 @@ function App() {
   const [houseServants, setHouseServants] = useState(1500); // Дом Слуг (получает % со всех)
   const [housePatronage, setHousePatronage] = useState(1000); // Дом Меценатства (не влияет на инфляцию)
   const [houseJustice, setHouseJustice] = useState(1500); // Дом Правосудия (получает % кроме слуг и гильдмастера)
+
+  // --- Репутация и сила домов (редактируемые вручную) ---
+  const [houseReputationManual, setHouseReputationManual] = useState({
+    mavo: 50,
+    accounting: 50,
+    family: 50,
+    guildmaster: 50,
+    servants: 50,
+    patronage: 50,
+    justice: 50,
+  });
+  
+  const [housePowerManual, setHousePowerManual] = useState({
+    mavo: 50,
+    accounting: 50,
+    family: 50,
+    guildmaster: 50,
+    servants: 50,
+    patronage: 50,
+    justice: 50,
+  });
   
   // --- Проценты для специальных домов ---
   const [servantsPercent, setServantsPercent] = useState(5); // Дом Слуг получает 5% со всех
@@ -576,30 +597,22 @@ function App() {
       return { ...m, payoutGM };
     });
 
-    // 10. Расчёт репутации домов (0-100)
-    // Репутация = (доля дома в казне / 25%) * 100, где 25% - идеальная доля
-    const houseReputation = {
-      mavo: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.mavo.percent / 25) * 100)) : 0,
-      accounting: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.accounting.percent / 25) * 100)) : 0,
-      family: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.family.percent / 25) * 100)) : 0,
-      guildmaster: mainHousesTotal > 0 ? Math.min(100, Math.round((houseStats.guildmaster.percent / 25) * 100)) : 0,
-    };
-
-    // 11. Репутация гильдмастера = средний рейтинг всех домов
-    const guildmasterReputation = Math.round(
-      (houseReputation.mavo + houseReputation.accounting + houseReputation.family + houseReputation.guildmaster) / 4
-    );
-
-    // 12. Репутация специальных домов (на основе их монет)
-    const specialHouseReputation = {
-      servants: Math.min(100, Math.round((houseServants / 10000) * 100)),
-      patronage: Math.min(100, Math.round((housePatronage / 10000) * 100)),
-      justice: Math.min(100, Math.round((houseJustice / 10000) * 100)),
-    };
-
-    // 13. Общая репутация гильдии
+    // 10. Репутация и сила домов (используем ручные значения)
+    const houseReputation = houseReputationManual;
+    const housePower = housePowerManual;
+    
+    // 11. Общая репутация гильдии (среднее всех домов)
     const guildReputation = Math.round(
-      (guildmasterReputation + specialHouseReputation.servants + specialHouseReputation.patronage + specialHouseReputation.justice) / 4
+      (houseReputation.mavo + houseReputation.accounting + houseReputation.family + 
+       houseReputation.guildmaster + houseReputation.servants + 
+       houseReputation.patronage + houseReputation.justice) / 7
+    );
+    
+    // 12. Общая сила гильдии
+    const guildPower = Math.round(
+      (housePower.mavo + housePower.accounting + housePower.family + 
+       housePower.guildmaster + housePower.servants + 
+       housePower.patronage + housePower.justice) / 7
     );
 
     return {
@@ -627,11 +640,31 @@ function App() {
       totalShares,
       isInDebt: totalGM < 0,
       houseReputation,
-      guildmasterReputation,
-      specialHouseReputation,
+      housePower,
       guildReputation,
+      guildPower,
     };
-  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, members, currentSetting]);
+  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, members, currentSetting, houseReputationManual, housePowerManual]);
+
+  // Завершить забег - обновить статистику наёмников
+  const finishRun = useCallback(() => {
+    // Здесь можно добавить логику обновления репутации наёмников
+    // Например, увеличивать репутацию за успешные забеги
+    // Пока просто сохраняем текущее состояние
+    console.log('Забег завершён', {
+      runName,
+      totalGM: calc.totalGM,
+      members: members.map(m => ({ name: m.name, reputation: m.reputation }))
+    });
+    
+    // Можно добавить автоматическое обновление репутации
+    // setMembers(prev => prev.map(m => ({
+    //   ...m,
+    //   reputation: Math.min(100, m.reputation + 5) // например, +5 за забег
+    // })));
+    
+    alert(`Забег "${runName}" завершён!\nПолучено: ${calc.totalGM} ГМ`);
+  }, [runName, calc, members]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-3 md:p-5">
@@ -1167,6 +1200,14 @@ function App() {
                   </p>
                 </div>
               )}
+
+              {/* Кнопка завершения забега */}
+              <button
+                onClick={finishRun}
+                className="w-full mt-3 bg-green-700 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded transition-colors text-sm"
+              >
+                ✅ Завершить забег
+              </button>
             </div>
           </div>
 
@@ -1627,21 +1668,32 @@ function App() {
             </p>
           </div>
 
-          {/* Репутация основных домов */}
+          {/* Репутация и сила основных домов */}
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-            <h2 className="text-sm font-semibold text-amber-300 mb-3">🏰 Репутация Домов</h2>
+            <h2 className="text-sm font-semibold text-amber-300 mb-3">🏰 Дома: Репутация и Сила</h2>
             <div className="space-y-3">
               {/* Дом Маво */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-purple-400">🔮 Дом Маво</span>
-                  <span className="text-xs font-mono text-purple-300">{calc.houseReputation.mavo}/100</span>
+                  <div className="flex gap-2 text-xs font-mono">
+                    <span className="text-purple-300" title="Репутация">⭐{calc.houseReputation.mavo}</span>
+                    <span className="text-purple-300" title="Сила">💪{calc.housePower.mavo}</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-purple-500 h-2 rounded-full transition-all"
-                    style={{ width: `${calc.houseReputation.mavo}%` }}
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Репутация">
+                    <div
+                      className="bg-purple-500 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.houseReputation.mavo}%` }}
+                    />
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Сила">
+                    <div
+                      className="bg-purple-400 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.housePower.mavo}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1649,13 +1701,24 @@ function App() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-cyan-400">📊 Дом Бухгалтерии</span>
-                  <span className="text-xs font-mono text-cyan-300">{calc.houseReputation.accounting}/100</span>
+                  <div className="flex gap-2 text-xs font-mono">
+                    <span className="text-cyan-300" title="Репутация">⭐{calc.houseReputation.accounting}</span>
+                    <span className="text-cyan-300" title="Сила">💪{calc.housePower.accounting}</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-cyan-500 h-2 rounded-full transition-all"
-                    style={{ width: `${calc.houseReputation.accounting}%` }}
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Репутация">
+                    <div
+                      className="bg-cyan-500 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.houseReputation.accounting}%` }}
+                    />
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Сила">
+                    <div
+                      className="bg-cyan-400 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.housePower.accounting}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1663,13 +1726,24 @@ function App() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-red-400">🗡 Дом Семьи</span>
-                  <span className="text-xs font-mono text-red-300">{calc.houseReputation.family}/100</span>
+                  <div className="flex gap-2 text-xs font-mono">
+                    <span className="text-red-300" title="Репутация">⭐{calc.houseReputation.family}</span>
+                    <span className="text-red-300" title="Сила">💪{calc.housePower.family}</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-red-500 h-2 rounded-full transition-all"
-                    style={{ width: `${calc.houseReputation.family}%` }}
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Репутация">
+                    <div
+                      className="bg-red-500 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.houseReputation.family}%` }}
+                    />
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Сила">
+                    <div
+                      className="bg-red-400 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.housePower.family}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1677,19 +1751,30 @@ function App() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-amber-400">👑 Гильдмастер</span>
-                  <span className="text-xs font-mono text-amber-300">{calc.guildmasterReputation}/100</span>
+                  <div className="flex gap-2 text-xs font-mono">
+                    <span className="text-amber-300" title="Репутация">⭐{calc.houseReputation.guildmaster}</span>
+                    <span className="text-amber-300" title="Сила">💪{calc.housePower.guildmaster}</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-amber-500 h-2 rounded-full transition-all"
-                    style={{ width: `${calc.guildmasterReputation}%` }}
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Репутация">
+                    <div
+                      className="bg-amber-500 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.houseReputation.guildmaster}%` }}
+                    />
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Сила">
+                    <div
+                      className="bg-amber-400 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.housePower.guildmaster}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Репутация специальных домов */}
+          {/* Репутация и сила специальных домов */}
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
             <h2 className="text-sm font-semibold text-amber-300 mb-3">⚙ Специальные Дома</h2>
             <div className="space-y-3">
@@ -1697,13 +1782,24 @@ function App() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-gray-400">🙇 Дом Слуг</span>
-                  <span className="text-xs font-mono text-gray-300">{calc.specialHouseReputation.servants}/100</span>
+                  <div className="flex gap-2 text-xs font-mono">
+                    <span className="text-gray-300" title="Репутация">⭐{calc.houseReputation.servants}</span>
+                    <span className="text-gray-300" title="Сила">💪{calc.housePower.servants}</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-gray-500 h-2 rounded-full transition-all"
-                    style={{ width: `${calc.specialHouseReputation.servants}%` }}
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Репутация">
+                    <div
+                      className="bg-gray-500 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.houseReputation.servants}%` }}
+                    />
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Сила">
+                    <div
+                      className="bg-gray-400 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.housePower.servants}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1711,13 +1807,24 @@ function App() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-pink-400">🎭 Дом Меценатства</span>
-                  <span className="text-xs font-mono text-pink-300">{calc.specialHouseReputation.patronage}/100</span>
+                  <div className="flex gap-2 text-xs font-mono">
+                    <span className="text-pink-300" title="Репутация">⭐{calc.houseReputation.patronage}</span>
+                    <span className="text-pink-300" title="Сила">💪{calc.housePower.patronage}</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-pink-500 h-2 rounded-full transition-all"
-                    style={{ width: `${calc.specialHouseReputation.patronage}%` }}
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Репутация">
+                    <div
+                      className="bg-pink-500 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.houseReputation.patronage}%` }}
+                    />
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Сила">
+                    <div
+                      className="bg-pink-400 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.housePower.patronage}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1725,13 +1832,219 @@ function App() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-blue-400">⚖ Дом Правосудия</span>
-                  <span className="text-xs font-mono text-blue-300">{calc.specialHouseReputation.justice}/100</span>
+                  <div className="flex gap-2 text-xs font-mono">
+                    <span className="text-blue-300" title="Репутация">⭐{calc.houseReputation.justice}</span>
+                    <span className="text-blue-300" title="Сила">💪{calc.housePower.justice}</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full transition-all"
-                    style={{ width: `${calc.specialHouseReputation.justice}%` }}
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Репутация">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.houseReputation.justice}%` }}
+                    />
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2" title="Сила">
+                    <div
+                      className="bg-blue-400 h-2 rounded-full transition-all"
+                      style={{ width: `${calc.housePower.justice}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Редактирование репутации и силы домов */}
+          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-3">✏️ Редактировать Дома</h2>
+            <div className="space-y-4">
+              {/* Дом Маво */}
+              <div className="border-b border-gray-700 pb-3">
+                <div className="text-xs text-purple-400 mb-2">🔮 Дом Маво</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Репутация</label>
+                    <input
+                      type="number"
+                      value={houseReputationManual.mavo}
+                      onChange={e => setHouseReputationManual(prev => ({ ...prev, mavo: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Сила</label>
+                    <input
+                      type="number"
+                      value={housePowerManual.mavo}
+                      onChange={e => setHousePowerManual(prev => ({ ...prev, mavo: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Дом Бухгалтерии */}
+              <div className="border-b border-gray-700 pb-3">
+                <div className="text-xs text-cyan-400 mb-2">📊 Дом Бухгалтерии</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Репутация</label>
+                    <input
+                      type="number"
+                      value={houseReputationManual.accounting}
+                      onChange={e => setHouseReputationManual(prev => ({ ...prev, accounting: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Сила</label>
+                    <input
+                      type="number"
+                      value={housePowerManual.accounting}
+                      onChange={e => setHousePowerManual(prev => ({ ...prev, accounting: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Дом Семьи */}
+              <div className="border-b border-gray-700 pb-3">
+                <div className="text-xs text-red-400 mb-2">🗡 Дом Семьи</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Репутация</label>
+                    <input
+                      type="number"
+                      value={houseReputationManual.family}
+                      onChange={e => setHouseReputationManual(prev => ({ ...prev, family: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Сила</label>
+                    <input
+                      type="number"
+                      value={housePowerManual.family}
+                      onChange={e => setHousePowerManual(prev => ({ ...prev, family: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Гильдмастер */}
+              <div className="border-b border-gray-700 pb-3">
+                <div className="text-xs text-amber-400 mb-2">👑 Гильдмастер</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Репутация</label>
+                    <input
+                      type="number"
+                      value={houseReputationManual.guildmaster}
+                      onChange={e => setHouseReputationManual(prev => ({ ...prev, guildmaster: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Сила</label>
+                    <input
+                      type="number"
+                      value={housePowerManual.guildmaster}
+                      onChange={e => setHousePowerManual(prev => ({ ...prev, guildmaster: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Дом Слуг */}
+              <div className="border-b border-gray-700 pb-3">
+                <div className="text-xs text-gray-400 mb-2">🙇 Дом Слуг</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Репутация</label>
+                    <input
+                      type="number"
+                      value={houseReputationManual.servants}
+                      onChange={e => setHouseReputationManual(prev => ({ ...prev, servants: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Сила</label>
+                    <input
+                      type="number"
+                      value={housePowerManual.servants}
+                      onChange={e => setHousePowerManual(prev => ({ ...prev, servants: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-gray-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Дом Меценатства */}
+              <div className="border-b border-gray-700 pb-3">
+                <div className="text-xs text-pink-400 mb-2">🎭 Дом Меценатства</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Репутация</label>
+                    <input
+                      type="number"
+                      value={houseReputationManual.patronage}
+                      onChange={e => setHouseReputationManual(prev => ({ ...prev, patronage: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Сила</label>
+                    <input
+                      type="number"
+                      value={housePowerManual.patronage}
+                      onChange={e => setHousePowerManual(prev => ({ ...prev, patronage: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-pink-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Дом Правосудия */}
+              <div>
+                <div className="text-xs text-blue-400 mb-2">⚖ Дом Правосудия</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Репутация</label>
+                    <input
+                      type="number"
+                      value={houseReputationManual.justice}
+                      onChange={e => setHouseReputationManual(prev => ({ ...prev, justice: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Сила</label>
+                    <input
+                      type="number"
+                      value={housePowerManual.justice}
+                      onChange={e => setHousePowerManual(prev => ({ ...prev, justice: Math.max(0, Math.min(100, Number(e.target.value))) }))}
+                      min="0" max="100"
+                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1750,14 +2063,20 @@ function App() {
                   <div key={m.id} className="bg-gray-700/50 rounded p-3">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-sm text-gray-200 font-semibold">{m.name}</span>
-                      <span className={`text-lg font-bold ${
-                        m.reputation >= 75 ? 'text-green-400' :
-                        m.reputation >= 50 ? 'text-yellow-400' :
-                        m.reputation >= 25 ? 'text-orange-400' :
-                        'text-red-400'
-                      }`}>
-                        {m.reputation}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={m.reputation}
+                          onChange={e => updateMember(m.id, 'reputation', Math.max(0, Math.min(100, Number(e.target.value))))}
+                          min="0" max="100"
+                          className={`w-16 bg-gray-700 border rounded px-2 py-1 text-center text-sm font-mono focus:outline-none ${
+                            m.reputation >= 75 ? 'border-green-600 text-green-400' :
+                            m.reputation >= 50 ? 'border-yellow-600 text-yellow-400' :
+                            m.reputation >= 25 ? 'border-orange-600 text-orange-400' :
+                            'border-red-600 text-red-400'
+                          }`}
+                        />
+                      </div>
                     </div>
                     <div className="w-full bg-gray-600 rounded-full h-2 mb-2">
                       <div
@@ -1789,11 +2108,11 @@ function App() {
           <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
             <h3 className="text-xs font-semibold text-gray-500 mb-1.5">💡 Как считается репутация</h3>
             <div className="text-xs text-gray-600 space-y-0.5">
-              <p>• <strong className="text-gray-400">Дома</strong>: рейтинг зависит от доли в общей казне (25% = 100)</p>
-              <p>• <strong className="text-gray-400">Гильдмастер</strong>: средний рейтинг всех домов</p>
-              <p>• <strong className="text-gray-400">Спец. дома</strong>: рейтинг зависит от количества монет (10000 = 100)</p>
-              <p>• <strong className="text-gray-400">Гильдия</strong>: средний рейтинг всех домов</p>
-              <p>• <strong className="text-gray-400">Наёмники</strong>: личный рейтинг (пока не меняется автоматически)</p>
+              <p>• <strong className="text-gray-400">Дома</strong>: репутация и сила устанавливаются вручную</p>
+              <p>• <strong className="text-gray-400">Гильдия</strong>: средняя репутация всех домов</p>
+              <p>• <strong className="text-gray-400">Наёмники</strong>: репутация устанавливается вручную (0-100)</p>
+              <p>• <strong className="text-gray-400">Ранги</strong>: ⭐ Мастер (75+), ✓ Опытный (50+), • Новичок (25+), ⚠ Ненадёжный (&lt;25)</p>
+              <p className="mt-1 text-gray-500">Кнопка "Завершить забег" на вкладке "Забег" фиксирует результаты</p>
             </div>
           </div>
         </div>
