@@ -269,7 +269,27 @@ function App() {
     const saved = localStorage.getItem('savedRuns');
     if (saved) {
       try {
-        setSavedRuns(JSON.parse(saved));
+        const runs: SavedRun[] = JSON.parse(saved);
+        setSavedRuns(runs);
+        
+        // Собираем всех наёмников из сохранённых забегов
+        const allMergs: PartyMember[] = [];
+        const seenNames = new Set<string>();
+        
+        runs.forEach(run => {
+          // Берём из allMercenaries или из members (для старых забегов)
+          const mercs = run.data.allMercenaries || run.data.members || [];
+          mercs.forEach(m => {
+            if (!seenNames.has(m.name)) {
+              seenNames.add(m.name);
+              allMergs.push(m);
+            }
+          });
+        });
+        
+        if (allMergs.length > 0) {
+          setAllMercenaries(allMergs);
+        }
       } catch (e) {
         console.error('Failed to load saved runs:', e);
       }
@@ -336,9 +356,15 @@ function App() {
     setHasKush(data.hasKush);
     setMembers(data.members);
     setItems(data.items);
-    if (data.allMercenaries) {
-      setAllMercenaries(data.allMercenaries);
-    }
+    
+    // Объединяем наёмников из забега с текущими (без дубликатов)
+    setAllMercenaries(prev => {
+      const existingNames = new Set(prev.map(m => m.name));
+      // Берём наёмников из allMercenaries или из members (для старых забегов)
+      const runMercs = data.allMercenaries || data.members || [];
+      const newMercs = runMercs.filter((m: PartyMember) => !existingNames.has(m.name));
+      return [...prev, ...newMercs];
+    });
   }, []);
 
   // Сохранить текущий забег
@@ -414,7 +440,25 @@ function App() {
           const merged = [...savedRuns, ...data.runs];
           setSavedRuns(merged);
           localStorage.setItem('savedRuns', JSON.stringify(merged));
-          alert(`Импортировано ${data.runs.length} забегов`);
+          
+          // Извлекаем всех наёмников из импортированных забегов
+          const importedMercs: PartyMember[] = [];
+          data.runs.forEach((run: SavedRun) => {
+            if (run.data.allMercenaries && Array.isArray(run.data.allMercenaries)) {
+              importedMercs.push(...run.data.allMercenaries);
+            }
+          });
+          
+          // Объединяем с текущими наёмниками (без дубликатов)
+          if (importedMercs.length > 0) {
+            setAllMercenaries(prev => {
+              const existingNames = new Set(prev.map(m => m.name));
+              const newMercs = importedMercs.filter(m => !existingNames.has(m.name));
+              return [...prev, ...newMercs];
+            });
+          }
+          
+          alert(`Импортировано ${data.runs.length} забегов${importedMercs.length > 0 ? ` и ${importedMercs.length} наёмников` : ''}`);
         } else {
           alert('Неверный формат файла');
         }
