@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
 // === ТИПЫ ===
-type ItemCategory = 'обычное' | 'дорогое' | 'редкое' | 'люди' | 'артефакты';
+type ItemCategory = string;
 
 interface Item {
   id: string;
@@ -27,6 +27,7 @@ interface SavedRun {
 
 interface RunData {
   runName: string;
+  currentSetting: string;
   cleanRunBonus: number;
   predictorPercent: number;
   mercenaryCost: number;
@@ -42,7 +43,7 @@ interface RunData {
   justicePercent: number;
   treasuryStandard: number;
   baseCourseAtStandard: number;
-  multipliers: Record<ItemCategory, number>;
+  multipliers: Record<string, number>;
   kushName: string;
   kushPrice: number;
   hasKush: boolean;
@@ -51,36 +52,50 @@ interface RunData {
 }
 
 // === КОНСТАНТЫ ===
-const DEFAULT_MULTIPLIERS: Record<ItemCategory, number> = {
-  'обычное': 1.0,
-  'дорогое': 2.5,
-  'редкое': 5.0,
+// Множители по умолчанию для разных категорий
+const DEFAULT_MULTIPLIERS: Record<string, number> = {
+  'обычные вещи': 1.0,
+  'дорогие вещи': 2.5,
+  'редкие': 5.0,
   'люди': 8.0,
   'артефакты': 15.0,
+  'скот': 1.5,
+  'документы': 4.0,
+  'монстры': 6.0,
+  'магические предметы': 10.0,
+  'груз': 2.0,
 };
 
-const CATEGORY_ICONS: Record<ItemCategory, string> = {
-  'обычное': '🪙',
-  'дорогое': '💰',
-  'редкое': '📜',
-  'люди': '👤',
-  'артефакты': '💎',
+const getCategoryIcon = (cat: string): string => {
+  const icons: Record<string, string> = {
+    'обычные вещи': '🪙',
+    'дорогие вещи': '💰',
+    'редкие': '📜',
+    'люди': '👤',
+    'артефакты': '💎',
+    'скот': '🐄',
+    'документы': '📋',
+    'монстры': '👹',
+    'магические предметы': '✨',
+    'груз': '📦',
+  };
+  return icons[cat] || '🎒';
 };
 
-const CATEGORY_COLORS: Record<ItemCategory, string> = {
-  'обычное': 'text-gray-300',
-  'дорогое': 'text-yellow-400',
-  'редкое': 'text-purple-400',
-  'люди': 'text-red-400',
-  'артефакты': 'text-cyan-400',
-};
-
-const CATEGORY_BG: Record<ItemCategory, string> = {
-  'обычное': 'bg-gray-700/50',
-  'дорогое': 'bg-yellow-900/30',
-  'редкое': 'bg-purple-900/30',
-  'люди': 'bg-red-900/30',
-  'артефакты': 'bg-cyan-900/30',
+const getCategoryColor = (cat: string): string => {
+  const colors: Record<string, string> = {
+    'обычные вещи': 'text-gray-300',
+    'дорогие вещи': 'text-yellow-400',
+    'редкие': 'text-purple-400',
+    'люди': 'text-red-400',
+    'артефакты': 'text-cyan-400',
+    'скот': 'text-green-400',
+    'документы': 'text-blue-400',
+    'монстры': 'text-orange-400',
+    'магические предметы': 'text-pink-400',
+    'груз': 'text-amber-400',
+  };
+  return colors[cat] || 'text-gray-300';
 };
 
 const DEFAULT_NAMES = [
@@ -135,9 +150,9 @@ function App() {
 
   // --- Добыча ---
   const [items, setItems] = useState<Item[]>([
-    { id: '1', name: 'Серебряные украшения', category: 'обычное', basePrice: 5, quantity: 3, stolen: true },
-    { id: '2', name: 'Золотой перстень', category: 'дорогое', basePrice: 12, quantity: 1, stolen: true },
-    { id: '3', name: 'Зашифрованный свиток', category: 'редкое', basePrice: 20, quantity: 1, stolen: true },
+    { id: '1', name: 'Серебряные украшения', category: 'обычные вещи', basePrice: 5, quantity: 3, stolen: true },
+    { id: '2', name: 'Золотой перстень', category: 'дорогие вещи', basePrice: 12, quantity: 1, stolen: true },
+    { id: '3', name: 'Зашифрованный свиток', category: 'редкие', basePrice: 20, quantity: 1, stolen: true },
   ]);
 
   // --- Сохранение/загрузка ---
@@ -148,6 +163,33 @@ function App() {
 
   // --- Вкладки ---
   const [activeTab, setActiveTab] = useState<'run' | 'houses'>('run');
+
+  // --- Сеттинг ---
+  const [currentSetting, setCurrentSetting] = useState<string>('Город');
+  
+  // Определения сеттингов с их категориями
+  const SETTINGS = {
+    'Город': {
+      categories: ['обычные вещи', 'дорогие вещи', 'редкие', 'люди', 'артефакты'],
+      icon: '🏙',
+    },
+    'Деревня': {
+      categories: ['обычные вещи', 'дорогие вещи', 'скот', 'редкие'],
+      icon: '🏘',
+    },
+    'Дворец': {
+      categories: ['дорогие вещи', 'редкие', 'артефакты', 'люди', 'документы'],
+      icon: '🏰',
+    },
+    'Подземелье': {
+      categories: ['обычные вещи', 'редкие', 'артефакты', 'монстры', 'магические предметы'],
+      icon: '⚔',
+    },
+    'Корабль': {
+      categories: ['обычные вещи', 'дорогие вещи', 'редкие', 'груз', 'артефакты'],
+      icon: '⛵',
+    },
+  };
 
   // Загрузка сохранённых забегов из localStorage при старте
   useEffect(() => {
@@ -165,6 +207,7 @@ function App() {
   const getCurrentRunData = useCallback((): RunData => {
     return {
       runName,
+      currentSetting,
       cleanRunBonus,
       predictorPercent,
       mercenaryCost,
@@ -187,11 +230,12 @@ function App() {
       members,
       items,
     };
-  }, [runName, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, multipliers, kushName, kushPrice, hasKush, members, items]);
+  }, [runName, currentSetting, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, multipliers, kushName, kushPrice, hasKush, members, items]);
 
   // Загрузить данные забега
   const loadRunData = useCallback((data: RunData) => {
     setRunName(data.runName);
+    setCurrentSetting(data.currentSetting || 'Город');
     setCleanRunBonus(data.cleanRunBonus);
     setPredictorPercent(data.predictorPercent);
     setMercenaryCost(data.mercenaryCost);
@@ -425,17 +469,15 @@ function App() {
 
     // 1. Сумма добычи
     let lootSum = 0;
-    const perCategory: Record<ItemCategory, { count: number; value: number }> = {
-      'обычное': { count: 0, value: 0 },
-      'дорогое': { count: 0, value: 0 },
-      'редкое': { count: 0, value: 0 },
-      'люди': { count: 0, value: 0 },
-      'артефакты': { count: 0, value: 0 },
-    };
+    const perCategory: Record<string, { count: number; value: number }> = {};
+    // Инициализируем категории текущего сеттинга
+    SETTINGS[currentSetting as keyof typeof SETTINGS].categories.forEach(cat => {
+      perCategory[cat] = { count: 0, value: 0 };
+    });
 
     items.forEach(item => {
       if (item.stolen) {
-        const val = item.basePrice * item.quantity * multipliers[item.category];
+        const val = item.basePrice * item.quantity * (multipliers[item.category] || DEFAULT_MULTIPLIERS[item.category] || 1.0);
         lootSum += val;
         perCategory[item.category].count += item.quantity;
         perCategory[item.category].value += val;
@@ -501,7 +543,7 @@ function App() {
       totalShares,
       isInDebt: totalGM < 0,
     };
-  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, members]);
+  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, houseMavo, houseAccounting, houseFamily, houseGuildmaster, houseServants, housePatronage, houseJustice, servantsPercent, justicePercent, treasuryStandard, baseCourseAtStandard, members, currentSetting]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-3 md:p-5">
@@ -598,29 +640,27 @@ function App() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-0.5">Стандарт казны (референс)</label>
-                <input
-                  type="number"
-                  value={treasuryStandard}
-                  onChange={e => setTreasuryStandard(Math.max(1, Number(e.target.value)))}
-                  min="1"
-                  step="1000"
+                <label className="block text-xs text-gray-400 mb-0.5">Сеттинг (откуда воруют)</label>
+                <select
+                  value={currentSetting}
+                  onChange={e => {
+                    setCurrentSetting(e.target.value);
+                    // При смене сеттинга обновляем категории предметов на категории нового сеттинга
+                    const newCategories = SETTINGS[e.target.value as keyof typeof SETTINGS].categories;
+                    setItems(prev => prev.map(item => ({
+                      ...item,
+                      category: newCategories.includes(item.category) ? item.category : newCategories[0]
+                    })));
+                  }}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
-                />
+                >
+                  {Object.entries(SETTINGS).map(([name, data]) => (
+                    <option key={name} value={name}>{data.icon} {name}</option>
+                  ))}
+                </select>
                 <p className="text-xs text-gray-600 mt-0.5">
-                  При {treasuryStandard.toLocaleString()} монет курс = {baseCourseAtStandard} ед./ГМ
+                  Категории: {SETTINGS[currentSetting as keyof typeof SETTINGS].categories.join(', ')}
                 </p>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-0.5">Базовый курс (при стандарте)</label>
-                <input
-                  type="number"
-                  value={baseCourseAtStandard}
-                  onChange={e => setBaseCourseAtStandard(Math.max(1, Number(e.target.value)))}
-                  min="1"
-                  step="1"
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
-                />
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-0.5">
@@ -642,23 +682,31 @@ function App() {
             <div className="flex justify-between items-center mb-2">
               <h2 className="text-sm font-semibold text-amber-300">📊 Множители</h2>
               <button
-                onClick={() => setMultipliers(DEFAULT_MULTIPLIERS)}
+                onClick={() => {
+                  // Сбросить множители для категорий текущего сеттинга
+                  const currentCategories = SETTINGS[currentSetting as keyof typeof SETTINGS].categories;
+                  const newMultipliers = { ...multipliers };
+                  currentCategories.forEach(cat => {
+                    newMultipliers[cat] = DEFAULT_MULTIPLIERS[cat] || 1.0;
+                  });
+                  setMultipliers(newMultipliers);
+                }}
                 className="text-xs text-gray-500 hover:text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 transition-colors"
               >
                 ↺
               </button>
             </div>
             <div className="space-y-1.5">
-              {(Object.keys(multipliers) as ItemCategory[]).map(cat => (
+              {SETTINGS[currentSetting as keyof typeof SETTINGS].categories.map(cat => (
                 <div key={cat} className="flex justify-between items-center gap-1">
-                  <span className={`text-xs ${CATEGORY_COLORS[cat]}`}>
-                    {CATEGORY_ICONS[cat]} {cat}
+                  <span className={`text-xs ${getCategoryColor(cat)}`}>
+                    {getCategoryIcon(cat)} {cat}
                   </span>
                   <div className="flex items-center gap-0.5">
                     <span className="text-gray-600 text-xs">×</span>
                     <input
                       type="number"
-                      value={multipliers[cat]}
+                      value={multipliers[cat] || DEFAULT_MULTIPLIERS[cat] || 1.0}
                       onChange={e => {
                         const v = Math.max(0, Number(e.target.value));
                         setMultipliers(prev => ({ ...prev, [cat]: v }));
@@ -820,7 +868,7 @@ function App() {
                   </thead>
                   <tbody>
                     {items.map(item => {
-                      const val = item.basePrice * item.quantity * multipliers[item.category];
+                      const val = item.basePrice * item.quantity * (multipliers[item.category] || DEFAULT_MULTIPLIERS[item.category] || 1.0);
                       return (
                         <tr key={item.id} className={`border-b border-gray-700/30 ${!item.stolen ? 'opacity-30' : ''}`}>
                           <td className="py-1 px-1">
@@ -835,9 +883,9 @@ function App() {
                             <select
                               value={item.category}
                               onChange={e => updateItem(item.id, 'category', e.target.value)}
-                              className={`bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500 ${CATEGORY_COLORS[item.category]}`}
+                              className={`bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-xs focus:outline-none focus:border-amber-500 ${getCategoryColor(item.category)}`}
                             >
-                              {(Object.keys(multipliers) as ItemCategory[]).map(c => (
+                              {SETTINGS[currentSetting as keyof typeof SETTINGS].categories.map(c => (
                                 <option key={c} value={c}>{c}</option>
                               ))}
                             </select>
@@ -860,7 +908,7 @@ function App() {
                               className="w-10 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-center text-xs font-mono focus:outline-none focus:border-amber-500"
                             />
                           </td>
-                          <td className={`py-1 px-1 text-center font-mono ${CATEGORY_COLORS[item.category]}`}>
+                          <td className={`py-1 px-1 text-center font-mono ${getCategoryColor(item.category)}`}>
                             {item.stolen ? val.toFixed(0) : '—'}
                           </td>
                           <td className="py-1 px-0.5 text-center">
@@ -1012,8 +1060,8 @@ function App() {
               {(Object.entries(calc.perCategory) as [ItemCategory, { count: number; value: number }][]).map(([cat, data]) => (
                 data.count > 0 && (
                   <div key={cat} className="flex justify-between text-xs">
-                    <span className={CATEGORY_COLORS[cat]}>
-                      {CATEGORY_ICONS[cat]} {cat}
+                    <span className={getCategoryColor(cat)}>
+                      {getCategoryIcon(cat)} {cat}
                     </span>
                     <span className="text-gray-400 font-mono">
                       {data.count} шт. → {data.value.toFixed(0)} ед.
