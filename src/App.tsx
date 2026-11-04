@@ -121,6 +121,7 @@ function App() {
   // --- Сохранение/загрузка ---
   const [savedRuns, setSavedRuns] = useState<SavedRun[]>([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Загрузка сохранённых забегов из localStorage при старте
@@ -209,15 +210,27 @@ function App() {
       exportedAt: new Date().toISOString(),
       runs: savedRuns,
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
+    
+    // Создаём ссылку и кликаем
     const a = document.createElement('a');
     a.href = url;
     a.download = `guild-runs-${new Date().toISOString().split('T')[0]}.json`;
+    a.style.display = 'none';
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    // Небольшая задержка для надёжности
+    setTimeout(() => {
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      // Показываем уведомление об успехе
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 2000);
+    }, 100);
   }, [savedRuns]);
 
   // Импорт из JSON файла
@@ -401,11 +414,17 @@ function App() {
           📂 Загрузить ({savedRuns.length})
         </button>
         <button
-          onClick={exportToFile}
-          disabled={savedRuns.length === 0}
-          className="bg-purple-700 hover:bg-purple-600 disabled:bg-gray-700 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1"
+          onClick={() => {
+            if (savedRuns.length === 0) {
+              alert('Сначала сохраните хотя бы один забег');
+              return;
+            }
+            exportToFile();
+          }}
+          className={`${exportSuccess ? 'bg-green-600' : 'bg-purple-700 hover:bg-purple-600'} text-white text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1`}
+          title={savedRuns.length === 0 ? 'Сначала сохраните забег' : `Экспорт ${savedRuns.length} забегов`}
         >
-          📤 Экспорт
+          {exportSuccess ? '✓ Экспортировано' : `📤 Экспорт ${savedRuns.length > 0 ? `(${savedRuns.length})` : ''}`}
         </button>
         <label className="bg-orange-700 hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 cursor-pointer">
           📥 Импорт
