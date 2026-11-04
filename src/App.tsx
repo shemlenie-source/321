@@ -2159,14 +2159,61 @@ function App() {
         {/* Правая колонка: Репутация наёмников */}
         <div className="lg:col-span-6 space-y-3">
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-            <h2 className="text-sm font-semibold text-amber-300 mb-3">🗡 Все Наёмники ({allMercenaries.length})</h2>
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-sm font-semibold text-amber-300">🗡 Все Наёмники ({allMercenaries.length})</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const name = prompt('Введите имя нового наёмника:');
+                    if (name && name.trim()) {
+                      const newMerc: PartyMember = {
+                        id: Date.now().toString(),
+                        name: name.trim(),
+                        sharePercent: 0,
+                        reputation: 50,
+                      };
+                      setAllMercenaries(prev => [...prev, newMerc]);
+                    }
+                  }}
+                  className="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded transition-colors"
+                >
+                  + Добавить
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('⚠️ Вы уверены? Это удалит ВСЕХ наёмников и ВСЕ сохранённые забеги без возможности восстановления!')) {
+                      setAllMercenaries([]);
+                      setSavedRuns([]);
+                      localStorage.removeItem('allMercenaries');
+                      localStorage.removeItem('savedRuns');
+                    }
+                  }}
+                  className="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded transition-colors"
+                >
+                  🗑 Сброс
+                </button>
+              </div>
+            </div>
             {allMercenaries.length === 0 ? (
               <p className="text-gray-500 text-center py-4 text-sm">Нет наёмников. Завершите забег, чтобы добавить участников.</p>
             ) : (
               <div className="space-y-2">
                 {allMercenaries.map(m => (
                   <div key={m.id} className="bg-gray-700/50 rounded p-2 flex items-center gap-2">
-                    <span className="text-sm text-gray-200 flex-1">{m.name}</span>
+                    <button
+                      onClick={() => {
+                        const newName = prompt('Введите новое имя:', m.name);
+                        if (newName && newName.trim()) {
+                          setAllMercenaries(prev => prev.map(merc => 
+                            merc.id === m.id ? { ...merc, name: newName.trim() } : merc
+                          ));
+                        }
+                      }}
+                      className="text-sm text-gray-200 flex-1 text-left hover:text-amber-400 transition-colors"
+                      title="Нажми чтобы переименовать"
+                    >
+                      {m.name}
+                    </button>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -2197,6 +2244,17 @@ function App() {
                         style={{ width: `${m.reputation}%` }}
                       />
                     </div>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Удалить наёмника "${m.name}"?`)) {
+                          setAllMercenaries(prev => prev.filter(merc => merc.id !== m.id));
+                        }
+                      }}
+                      className="text-red-500 hover:text-red-400 text-lg px-1 transition-colors"
+                      title="Удалить наёмника"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
