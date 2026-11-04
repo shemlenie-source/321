@@ -2161,23 +2161,38 @@ function App() {
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-sm font-semibold text-amber-300">🗡 Все Наёмники ({allMercenaries.length})</h2>
-              <button
-                onClick={() => {
-                  const name = prompt('Введите имя нового наёмника:');
-                  if (name && name.trim()) {
-                    const newMerc: PartyMember = {
-                      id: Date.now().toString(),
-                      name: name.trim(),
-                      sharePercent: 0,
-                      reputation: 50,
-                    };
-                    setAllMercenaries(prev => [...prev, newMerc]);
-                  }
-                }}
-                className="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded transition-colors"
-              >
-                + Добавить
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const name = prompt('Введите имя нового наёмника:');
+                    if (name && name.trim()) {
+                      const newMerc: PartyMember = {
+                        id: Date.now().toString(),
+                        name: name.trim(),
+                        sharePercent: 0,
+                        reputation: 50,
+                      };
+                      setAllMercenaries(prev => [...prev, newMerc]);
+                    }
+                  }}
+                  className="text-xs bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded transition-colors"
+                >
+                  + Добавить
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('⚠️ Вы уверены? Это удалит ВСЕХ наёмников и ВСЕ сохранённые забеги без возможности восстановления!')) {
+                      setAllMercenaries([]);
+                      setSavedRuns([]);
+                      localStorage.removeItem('allMercenaries');
+                      localStorage.removeItem('savedRuns');
+                    }
+                  }}
+                  className="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded transition-colors"
+                >
+                  🗑 Сброс
+                </button>
+              </div>
             </div>
             {allMercenaries.length === 0 ? (
               <p className="text-gray-500 text-center py-4 text-sm">Нет наёмников. Завершите забег, чтобы добавить участников.</p>
