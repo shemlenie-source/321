@@ -709,9 +709,11 @@ function App() {
       {/* Заголовок */}
       <header className="mb-4 text-center">
         <h1 className="text-xl md:text-2xl font-bold text-amber-400">
-          ⚔ Калькулятор Гильдейской Монеты ⚔
+          🖤 Эликса — Помощница Гильдмастера 🖤
         </h1>
-        <p className="text-gray-500 text-xs mt-0.5">Экономика воров и наёмников</p>
+        <p className="text-gray-500 text-xs mt-0.5">
+          Суккуб-бухгалтер гильдии воров и наёмников
+        </p>
       </header>
 
       {/* Панель управления сохранением */}
@@ -2210,6 +2212,13 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Подпись Эликсы */}
+      <footer className="max-w-7xl mx-auto mt-6 text-center">
+        <p className="text-xs text-gray-600 italic">
+          🖤 Всё посчитано, всё на месте. Гильдмастер доволен. — <span className="text-pink-500/70">Эликса</span>
+        </p>
+      </footer>
     </div>
   );
 }
