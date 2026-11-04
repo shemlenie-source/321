@@ -19,8 +19,8 @@ interface RunResult {
   perCategory: Record<ItemCategory, { count: number; value: number }>;
 }
 
-// Множители для категорий
-const CATEGORY_MULTIPLIERS: Record<ItemCategory, number> = {
+// Дефолтные множители для категорий
+const DEFAULT_MULTIPLIERS: Record<ItemCategory, number> = {
   'обычное': 1.0,
   'дорогое': 2.5,
   'редкое': 5.0,
@@ -45,6 +45,8 @@ const CATEGORY_BG: Record<ItemCategory, string> = {
 };
 
 function App() {
+  // Множители категорий (редактируемые)
+  const [multipliers, setMultipliers] = useState<Record<ItemCategory, number>>(DEFAULT_MULTIPLIERS);
   // Базовый курс: сколько базовых единиц = 1 гильдейская монета
   const [baseRate, setBaseRate] = useState<number>(10);
   // Бонус за "чистоту" забега (0-100%)
@@ -98,7 +100,7 @@ function App() {
 
     items.forEach(item => {
       if (item.stolen) {
-        const value = item.basePrice * item.quantity * CATEGORY_MULTIPLIERS[item.category];
+        const value = item.basePrice * item.quantity * multipliers[item.category];
         totalBaseValue += value;
         perCategory[item.category].count += item.quantity;
         perCategory[item.category].value += value;
@@ -119,7 +121,7 @@ function App() {
       totalInGuildCoins,
       perCategory,
     };
-  }, [items, baseRate, cleanRunBonus, lossPenalty]);
+  }, [items, baseRate, cleanRunBonus, lossPenalty, multipliers]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-6">
@@ -200,14 +202,36 @@ function App() {
 
           {/* Множители категорий */}
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-            <h2 className="text-lg font-semibold text-amber-300 mb-3">📊 Множители категорий</h2>
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-semibold text-amber-300">📊 Множители категорий</h2>
+              <button
+                onClick={() => setMultipliers(DEFAULT_MULTIPLIERS)}
+                className="text-xs text-gray-500 hover:text-gray-300 border border-gray-600 rounded px-2 py-0.5 transition-colors"
+                title="Сбросить к значениям по умолчанию"
+              >
+                ↺ сброс
+              </button>
+            </div>
             <div className="space-y-2 text-sm">
-              {(Object.entries(CATEGORY_MULTIPLIERS) as [ItemCategory, number][]).map(([cat, mult]) => (
-                <div key={cat} className="flex justify-between items-center">
+              {(Object.keys(multipliers) as ItemCategory[]).map((cat) => (
+                <div key={cat} className="flex justify-between items-center gap-2">
                   <span className={CATEGORY_COLORS[cat]}>
                     {cat === 'люди' ? '👤' : cat === 'артефакты' ? '💎' : cat === 'редкое' ? '📜' : cat === 'дорогое' ? '💰' : '🪙'} {cat}
                   </span>
-                  <span className="text-gray-300 font-mono">×{mult}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-500 text-xs">×</span>
+                    <input
+                      type="number"
+                      value={multipliers[cat]}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value));
+                        setMultipliers(prev => ({ ...prev, [cat]: val }));
+                      }}
+                      min="0"
+                      step="0.5"
+                      className="w-16 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-center text-sm font-mono text-gray-300 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -285,7 +309,7 @@ function App() {
                   </thead>
                   <tbody>
                     {items.map(item => {
-                      const totalValue = item.basePrice * item.quantity * CATEGORY_MULTIPLIERS[item.category];
+                      const totalValue = item.basePrice * item.quantity * multipliers[item.category];
                       return (
                         <tr key={item.id} className={`border-b border-gray-700/50 ${!item.stolen ? 'opacity-40' : ''}`}>
                           <td className="py-2 px-2">
