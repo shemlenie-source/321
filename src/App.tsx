@@ -264,31 +264,43 @@ function App() {
   // --- Вкладки ---
   const [activeTab, setActiveTab] = useState<'run' | 'houses' | 'stats'>('run');
 
-  // Загрузка сохранённых забегов из localStorage при старте
+  // Загрузка сохранённых забегов и наёмников из localStorage при старте
   useEffect(() => {
+    // Сначала загружаем наёмников из отдельного хранилища (они приоритетнее)
+    const savedMercs = localStorage.getItem('allMercenaries');
+    if (savedMercs) {
+      try {
+        setAllMercenaries(JSON.parse(savedMercs));
+      } catch (e) {
+        console.error('Failed to load mercenaries:', e);
+      }
+    }
+    
+    // Загружаем забеги
     const saved = localStorage.getItem('savedRuns');
     if (saved) {
       try {
         const runs: SavedRun[] = JSON.parse(saved);
         setSavedRuns(runs);
         
-        // Собираем всех наёмников из сохранённых забегов
-        const allMergs: PartyMember[] = [];
-        const seenNames = new Set<string>();
-        
-        runs.forEach(run => {
-          // Берём из allMercenaries или из members (для старых забегов)
-          const mercs = run.data.allMercenaries || run.data.members || [];
-          mercs.forEach(m => {
-            if (!seenNames.has(m.name)) {
-              seenNames.add(m.name);
-              allMergs.push(m);
-            }
+        // Если наёмников не было в отдельном хранилище — собираем из забегов
+        if (!savedMercs) {
+          const allMergs: PartyMember[] = [];
+          const seenNames = new Set<string>();
+          
+          runs.forEach(run => {
+            const mercs = run.data.allMercenaries || run.data.members || [];
+            mercs.forEach(m => {
+              if (!seenNames.has(m.name)) {
+                seenNames.add(m.name);
+                allMergs.push(m);
+              }
+            });
           });
-        });
-        
-        if (allMergs.length > 0) {
-          setAllMercenaries(allMergs);
+          
+          if (allMergs.length > 0) {
+            setAllMercenaries(allMergs);
+          }
         }
       } catch (e) {
         console.error('Failed to load saved runs:', e);
@@ -298,6 +310,11 @@ function App() {
 
   // --- Все наёмники (история) ---
   const [allMercenaries, setAllMercenaries] = useState<PartyMember[]>([]);
+
+  // Автосохранение наёмников в localStorage при каждом изменении
+  useEffect(() => {
+    localStorage.setItem('allMercenaries', JSON.stringify(allMercenaries));
+  }, [allMercenaries]);
 
   // Получить текущие данные забега
   const getCurrentRunData = useCallback((): RunData => {
