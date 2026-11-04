@@ -656,15 +656,19 @@ function App() {
 
   // Завершить забег - сохранить в JSON и сбросить участников/лут
   const finishRun = useCallback(() => {
-    // 1. Добавляем текущих участников в общий список (если их там нет)
-    setAllMercenaries(prev => {
-      const existingNames = new Set(prev.map(m => m.name));
-      const newMercs = members.filter(m => !existingNames.has(m.name));
-      return [...prev, ...newMercs];
-    });
+    // 1. Сначала обновляем allMercenaries синхронно
+    const existingNames = new Set(allMercenaries.map(m => m.name));
+    const newMercs = members.filter(m => !existingNames.has(m.name));
+    const updatedAllMercenaries = [...allMercenaries, ...newMercs];
+    
+    // 2. Обновляем состояние
+    setAllMercenaries(updatedAllMercenaries);
 
-    // 2. Сохраняем текущий забег в JSON файл
-    const runData = getCurrentRunData();
+    // 3. Сохраняем текущий забег в JSON файл с обновлёнными данными
+    const runData = {
+      ...getCurrentRunData(),
+      allMercenaries: updatedAllMercenaries, // Используем обновлённый массив
+    };
     const exportData = {
       version: '1.0',
       exportedAt: new Date().toISOString(),
