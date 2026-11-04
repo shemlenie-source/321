@@ -146,6 +146,9 @@ function App() {
   const [exportSuccess, setExportSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- Вкладки ---
+  const [activeTab, setActiveTab] = useState<'run' | 'houses'>('run');
+
   // Загрузка сохранённых забегов из localStorage при старте
   useEffect(() => {
     const saved = localStorage.getItem('savedRuns');
@@ -549,6 +552,33 @@ function App() {
         </label>
       </div>
 
+      {/* Переключатель вкладок */}
+      <div className="max-w-7xl mx-auto mb-3">
+        <div className="flex gap-2 bg-gray-800 rounded-lg p-1 border border-gray-700">
+          <button
+            onClick={() => setActiveTab('run')}
+            className={`flex-1 px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+              activeTab === 'run'
+                ? 'bg-amber-600 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+            }`}
+          >
+            🎯 Забег
+          </button>
+          <button
+            onClick={() => setActiveTab('houses')}
+            className={`flex-1 px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+              activeTab === 'houses'
+                ? 'bg-amber-600 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+            }`}
+          >
+            🏛 Дома Гильдии
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'run' && (
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3">
 
         {/* ===== ЛЕВАЯ КОЛОНКА: Параметры + Участники + Предсказатель ===== */}
@@ -566,180 +596,6 @@ function App() {
                   onChange={e => setRunName(e.target.value)}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
                 />
-              </div>
-              {/* Дома правления */}
-              <div className="space-y-3 pt-2 border-t border-gray-700">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs text-gray-400 font-semibold">🏛 Основные дома</label>
-                  <span className="text-xs text-amber-400 font-mono">
-                    Казна: {calc.mainHousesTotal.toLocaleString()}
-                  </span>
-                </div>
-
-                {/* Дом Маво */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs text-purple-400">🔮 Дом Маво</label>
-                    <span className="text-xs text-purple-300 font-mono">{houseMavo.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    value={houseMavo}
-                    onChange={e => setHouseMavo(Math.max(0, Number(e.target.value)))}
-                    min="0"
-                    max="50000"
-                    step="500"
-                    className="w-full accent-purple-500"
-                  />
-                  <p className="text-xs text-gray-600 mt-0.5">Маги и паранормальные существа</p>
-                </div>
-
-                {/* Дом Бухгалтерии */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs text-cyan-400">📊 Дом Бухгалтерии</label>
-                    <span className="text-xs text-cyan-300 font-mono">{houseAccounting.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    value={houseAccounting}
-                    onChange={e => setHouseAccounting(Math.max(0, Number(e.target.value)))}
-                    min="0"
-                    max="50000"
-                    step="500"
-                    className="w-full accent-cyan-500"
-                  />
-                  <p className="text-xs text-gray-600 mt-0.5">Взлом реальности, цифры и подсчёт</p>
-                </div>
-
-                {/* Дом Семьи */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs text-red-400">🗡 Дом Семьи</label>
-                    <span className="text-xs text-red-300 font-mono">{houseFamily.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    value={houseFamily}
-                    onChange={e => setHouseFamily(Math.max(0, Number(e.target.value)))}
-                    min="0"
-                    max="50000"
-                    step="500"
-                    className="w-full accent-red-500"
-                  />
-                  <p className="text-xs text-gray-600 mt-0.5">Классическая мафия</p>
-                </div>
-
-                {/* Гильдмастер */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className="text-xs text-amber-400">👑 Гильдмастер</label>
-                    <span className="text-xs text-amber-300 font-mono">{houseGuildmaster.toLocaleString()}</span>
-                  </div>
-                  <input
-                    type="range"
-                    value={houseGuildmaster}
-                    onChange={e => setHouseGuildmaster(Math.max(0, Number(e.target.value)))}
-                    min="0"
-                    max="50000"
-                    step="500"
-                    className="w-full accent-amber-500"
-                  />
-                  <p className="text-xs text-gray-600 mt-0.5">Глава всей гильдии</p>
-                </div>
-
-                {/* Специальные дома */}
-                <div className="pt-2 mt-2 border-t border-gray-700">
-                  <label className="text-xs text-gray-500 font-semibold block mb-2">⚙ Специальные дома</label>
-
-                  {/* Дом Слуг */}
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs text-gray-400">🙇 Дом Слуг</label>
-                      <span className="text-xs text-gray-300 font-mono">{houseServants.toLocaleString()}</span>
-                    </div>
-                    <input
-                      type="range"
-                      value={houseServants}
-                      onChange={e => setHouseServants(Math.max(0, Number(e.target.value)))}
-                      min="0"
-                      max="50000"
-                      step="500"
-                      className="w-full accent-gray-500"
-                    />
-                    <div className="flex justify-between items-center mt-1">
-                      <p className="text-xs text-gray-600">Получает % со всех основных домов</p>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          value={servantsPercent}
-                          onChange={e => setServantsPercent(Math.max(0, Math.min(100, Number(e.target.value))))}
-                          min="0"
-                          max="100"
-                          step="1"
-                          className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-center text-xs font-mono focus:outline-none focus:border-amber-500"
-                        />
-                        <span className="text-xs text-gray-500">%</span>
-                      </div>
-                    </div>
-                    {calc.servantsCut > 0 && (
-                      <p className="text-xs text-green-400 mt-0.5">+{calc.servantsCut.toLocaleString()} монет</p>
-                    )}
-                  </div>
-
-                  {/* Дом Меценатства */}
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs text-pink-400">🎭 Дом Меценатства</label>
-                      <span className="text-xs text-pink-300 font-mono">{housePatronage.toLocaleString()}</span>
-                    </div>
-                    <input
-                      type="range"
-                      value={housePatronage}
-                      onChange={e => setHousePatronage(Math.max(0, Number(e.target.value)))}
-                      min="0"
-                      max="50000"
-                      step="500"
-                      className="w-full accent-pink-500"
-                    />
-                    <p className="text-xs text-gray-600 mt-0.5">Не влияет на инфляцию</p>
-                  </div>
-
-                  {/* Дом Правосудия */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs text-blue-400">⚖ Дом Правосудия</label>
-                      <span className="text-xs text-blue-300 font-mono">{houseJustice.toLocaleString()}</span>
-                    </div>
-                    <input
-                      type="range"
-                      value={houseJustice}
-                      onChange={e => setHouseJustice(Math.max(0, Number(e.target.value)))}
-                      min="0"
-                      max="50000"
-                      step="500"
-                      className="w-full accent-blue-500"
-                    />
-                    <div className="flex justify-between items-center mt-1">
-                      <p className="text-xs text-gray-600">Получает % (кроме слуг и гильдмастера)</p>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          value={justicePercent}
-                          onChange={e => setJusticePercent(Math.max(0, Math.min(100, Number(e.target.value))))}
-                          min="0"
-                          max="100"
-                          step="1"
-                          className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-center text-xs font-mono focus:outline-none focus:border-amber-500"
-                        />
-                        <span className="text-xs text-gray-500">%</span>
-                      </div>
-                    </div>
-                    {calc.justiceCut > 0 && (
-                      <p className="text-xs text-green-400 mt-0.5">+{calc.justiceCut.toLocaleString()} монет</p>
-                    )}
-                  </div>
-                </div>
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-0.5">Стандарт казны (референс)</label>
@@ -1174,9 +1030,274 @@ function App() {
             </div>
           </div>
 
+          {/* Распределение */}
+          <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-2">💵 Распределение</h2>
+            {calc.memberPayouts.length === 0 ? (
+              <p className="text-gray-600 text-xs text-center py-2">Нет участников</p>
+            ) : (
+              <div className="space-y-1">
+                {calc.memberPayouts.map(m => {
+                  const fraction = calc.totalShares > 0 ? m.sharePercent / calc.totalShares : 0;
+                  return (
+                    <div key={m.id} className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-300 flex-1 min-w-0 truncate">{m.name}</span>
+                      <span className="text-gray-500 font-mono shrink-0">{m.sharePercent}%</span>
+                      <span className={`font-mono shrink-0 w-20 text-right font-semibold ${m.payoutGM < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                        {m.payoutGM >= 0 ? '+' : ''}{m.payoutGM} ГМ
+                      </span>
+                      {/* Мини-барчарт */}
+                      <div className="w-12 h-2 bg-gray-700 rounded-full overflow-hidden shrink-0">
+                        <div
+                          className={`h-full rounded-full ${m.payoutGM >= 0 ? 'bg-green-500/60' : 'bg-red-500/60'}`}
+                          style={{ width: `${Math.min(100, Math.abs(fraction) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Справка */}
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <h3 className="text-xs font-semibold text-gray-500 mb-1.5">💡 Формула расчёта</h3>
+            <div className="text-xs text-gray-600 space-y-0.5 font-mono">
+              <p>казна = Маво + Бухгалтерия + Семья + Гильдм.</p>
+              <p>Слуги += ⌊казна × servants%⌋</p>
+              <p>Правосудие += ⌊(М+Б+С) × justice%⌋</p>
+              <p>курс = базовый × (казна ÷ стандарт)</p>
+              <p>добыча = Σ(цена × кол × множ) + куш</p>
+              <p>с_бонусом = добыча × (1 + бонус%)</p>
+              <p>после_штрафов = с_бонусом − (цена × погибшие)</p>
+              <p>итог = после_штрафов × (1 − предсказатель%)</p>
+              <p>каждый = ⌊итог ÷ курс × (доля% ÷ Σдолей)⌋</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {activeTab === 'houses' && (
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* Левая колонка: Настройка домов */}
+        <div className="lg:col-span-6 space-y-3">
+          {/* Параметры казны */}
+          <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-2">💰 Параметры казны</h2>
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-xs text-gray-400 mb-0.5">Стандарт казны (референс)</label>
+                <input
+                  type="number"
+                  value={treasuryStandard}
+                  onChange={e => setTreasuryStandard(Math.max(1, Number(e.target.value)))}
+                  min="1"
+                  step="1000"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
+                />
+                <p className="text-xs text-gray-600 mt-0.5">
+                  При {treasuryStandard.toLocaleString()} монет курс = {baseCourseAtStandard} ед./ГМ
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-0.5">Базовый курс (при стандарте)</label>
+                <input
+                  type="number"
+                  value={baseCourseAtStandard}
+                  onChange={e => setBaseCourseAtStandard(Math.max(1, Number(e.target.value)))}
+                  min="1"
+                  step="1"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Основные дома */}
+          <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-sm font-semibold text-amber-300">🏛 Основные дома</h2>
+              <span className="text-xs text-amber-400 font-mono">
+                Казна: {calc.mainHousesTotal.toLocaleString()}
+              </span>
+            </div>
+            <div className="space-y-3">
+              {/* Дом Маво */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-purple-400">🔮 Дом Маво</label>
+                  <span className="text-xs text-purple-300 font-mono">{houseMavo.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  value={houseMavo}
+                  onChange={e => setHouseMavo(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-purple-500"
+                />
+                <p className="text-xs text-gray-600 mt-0.5">Маги и паранормальные существа</p>
+              </div>
+
+              {/* Дом Бухгалтерии */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-cyan-400">📊 Дом Бухгалтерии</label>
+                  <span className="text-xs text-cyan-300 font-mono">{houseAccounting.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  value={houseAccounting}
+                  onChange={e => setHouseAccounting(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-cyan-500"
+                />
+                <p className="text-xs text-gray-600 mt-0.5">Взлом реальности, цифры и подсчёт</p>
+              </div>
+
+              {/* Дом Семьи */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-red-400">🗡 Дом Семьи</label>
+                  <span className="text-xs text-red-300 font-mono">{houseFamily.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  value={houseFamily}
+                  onChange={e => setHouseFamily(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-red-500"
+                />
+                <p className="text-xs text-gray-600 mt-0.5">Классическая мафия</p>
+              </div>
+
+              {/* Гильдмастер */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-amber-400">👑 Гильдмастер</label>
+                  <span className="text-xs text-amber-300 font-mono">{houseGuildmaster.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  value={houseGuildmaster}
+                  onChange={e => setHouseGuildmaster(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-amber-500"
+                />
+                <p className="text-xs text-gray-600 mt-0.5">Глава всей гильдии</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Специальные дома */}
+          <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-2">⚙ Специальные дома</h2>
+            <div className="space-y-3">
+              {/* Дом Слуг */}
+              <div className="pb-3 border-b border-gray-700">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-gray-400">🙇 Дом Слуг</label>
+                  <span className="text-xs text-gray-300 font-mono">{houseServants.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  value={houseServants}
+                  onChange={e => setHouseServants(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-gray-500"
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-gray-600">Получает % со всех основных домов</p>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={servantsPercent}
+                      onChange={e => setServantsPercent(Math.max(0, Math.min(100, Number(e.target.value))))}
+                      min="0"
+                      max="100"
+                      step="1"
+                      className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-center text-xs font-mono focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="text-xs text-gray-500">%</span>
+                  </div>
+                </div>
+                {calc.servantsCut > 0 && (
+                  <p className="text-xs text-green-400 mt-0.5">+{calc.servantsCut.toLocaleString()} монет</p>
+                )}
+              </div>
+
+              {/* Дом Меценатства */}
+              <div className="pb-3 border-b border-gray-700">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-pink-400">🎭 Дом Меценатства</label>
+                  <span className="text-xs text-pink-300 font-mono">{housePatronage.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  value={housePatronage}
+                  onChange={e => setHousePatronage(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-pink-500"
+                />
+                <p className="text-xs text-gray-600 mt-0.5">Не влияет на инфляцию</p>
+              </div>
+
+              {/* Дом Правосудия */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-blue-400">⚖ Дом Правосудия</label>
+                  <span className="text-xs text-blue-300 font-mono">{houseJustice.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  value={houseJustice}
+                  onChange={e => setHouseJustice(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-blue-500"
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-gray-600">Получает % (кроме слуг и гильдмастера)</p>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={justicePercent}
+                      onChange={e => setJusticePercent(Math.max(0, Math.min(100, Number(e.target.value))))}
+                      min="0"
+                      max="100"
+                      step="1"
+                      className="w-12 bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-center text-xs font-mono focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="text-xs text-gray-500">%</span>
+                  </div>
+                </div>
+                {calc.justiceCut > 0 && (
+                  <p className="text-xs text-green-400 mt-0.5">+{calc.justiceCut.toLocaleString()} монет</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Правая колонка: Статистика + Множители */}
+        <div className="lg:col-span-6 space-y-3">
           {/* Статистика домов */}
           <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
-            <h2 className="text-sm font-semibold text-amber-300 mb-2">🏛 Статистика домов</h2>
+            <h2 className="text-sm font-semibold text-amber-300 mb-2">📊 Статистика домов</h2>
             <div className="space-y-2">
               {/* Визуальный барчарт основных домов */}
               <div className="flex h-6 rounded overflow-hidden border border-gray-600">
@@ -1278,34 +1399,39 @@ function App() {
             </div>
           </div>
 
-          {/* Распределение */}
+          {/* Множители категорий */}
           <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
-            <h2 className="text-sm font-semibold text-amber-300 mb-2">💵 Распределение</h2>
-            {calc.memberPayouts.length === 0 ? (
-              <p className="text-gray-600 text-xs text-center py-2">Нет участников</p>
-            ) : (
-              <div className="space-y-1">
-                {calc.memberPayouts.map(m => {
-                  const fraction = calc.totalShares > 0 ? m.sharePercent / calc.totalShares : 0;
-                  return (
-                    <div key={m.id} className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-300 flex-1 min-w-0 truncate">{m.name}</span>
-                      <span className="text-gray-500 font-mono shrink-0">{m.sharePercent}%</span>
-                      <span className={`font-mono shrink-0 w-20 text-right font-semibold ${m.payoutGM < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                        {m.payoutGM >= 0 ? '+' : ''}{m.payoutGM} ГМ
-                      </span>
-                      {/* Мини-барчарт */}
-                      <div className="w-12 h-2 bg-gray-700 rounded-full overflow-hidden shrink-0">
-                        <div
-                          className={`h-full rounded-full ${m.payoutGM >= 0 ? 'bg-green-500/60' : 'bg-red-500/60'}`}
-                          style={{ width: `${Math.min(100, Math.abs(fraction) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-sm font-semibold text-amber-300">📊 Множители категорий</h2>
+              <button
+                onClick={() => setMultipliers(DEFAULT_MULTIPLIERS)}
+                className="text-xs text-gray-500 hover:text-gray-300 border border-gray-600 rounded px-1.5 py-0.5 transition-colors"
+              >
+                ↺
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {(Object.keys(multipliers) as ItemCategory[]).map(cat => (
+                <div key={cat} className="flex justify-between items-center gap-1">
+                  <span className={`text-xs ${CATEGORY_COLORS[cat]}`}>
+                    {CATEGORY_ICONS[cat]} {cat}
+                  </span>
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-gray-600 text-xs">×</span>
+                    <input
+                      type="number"
+                      value={multipliers[cat]}
+                      onChange={e => {
+                        const v = Math.max(0, Number(e.target.value));
+                        setMultipliers(prev => ({ ...prev, [cat]: v }));
+                      }}
+                      min="0" step="0.5"
+                      className="w-14 bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-center text-xs font-mono text-gray-300 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Справка */}
@@ -1316,15 +1442,11 @@ function App() {
               <p>Слуги += ⌊казна × servants%⌋</p>
               <p>Правосудие += ⌊(М+Б+С) × justice%⌋</p>
               <p>курс = базовый × (казна ÷ стандарт)</p>
-              <p>добыча = Σ(цена × кол × множ) + куш</p>
-              <p>с_бонусом = добыча × (1 + бонус%)</p>
-              <p>после_штрафов = с_бонусом − (цена × погибшие)</p>
-              <p>итог = после_штрафов × (1 − предсказатель%)</p>
-              <p>каждый = ⌊итог ÷ курс × (доля% ÷ Σдолей)⌋</p>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       {/* Модальное окно загрузки */}
       {showSaveModal && (
