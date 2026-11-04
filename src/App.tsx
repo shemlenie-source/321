@@ -31,7 +31,9 @@ interface RunData {
   predictorPercent: number;
   mercenaryCost: number;
   lostMercenaries: number;
-  treasuryAmount: number;
+  houseMavo: number;
+  houseAccounting: number;
+  houseFamily: number;
   treasuryStandard: number;
   baseCourseAtStandard: number;
   multipliers: Record<ItemCategory, number>;
@@ -90,9 +92,13 @@ function App() {
   const [lostMercenaries, setLostMercenaries] = useState(0);
 
   // --- Казна гильдии (динамический курс) ---
-  const [treasuryAmount, setTreasuryAmount] = useState(10000); // текущее кол-во монет в обращении
   const [treasuryStandard, setTreasuryStandard] = useState(10000); // стандарт (при котором курс = базовому)
   const [baseCourseAtStandard, setBaseCourseAtStandard] = useState(10); // курс при стандарте (ед. за 1 ГМ)
+
+  // --- Дома правления ---
+  const [houseMavo, setHouseMavo] = useState(3000); // Дом Маво (маги, паранормальное)
+  const [houseAccounting, setHouseAccounting] = useState(4000); // Дом Бухгалтерии (взлом реальности, цифры)
+  const [houseFamily, setHouseFamily] = useState(3000); // Дом Семьи (классическая мафия)
 
   // --- Множители ---
   const [multipliers, setMultipliers] = useState<Record<ItemCategory, number>>(DEFAULT_MULTIPLIERS);
@@ -144,7 +150,9 @@ function App() {
       predictorPercent,
       mercenaryCost,
       lostMercenaries,
-      treasuryAmount,
+      houseMavo,
+      houseAccounting,
+      houseFamily,
       treasuryStandard,
       baseCourseAtStandard,
       multipliers,
@@ -154,7 +162,7 @@ function App() {
       members,
       items,
     };
-  }, [runName, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, treasuryAmount, treasuryStandard, baseCourseAtStandard, multipliers, kushName, kushPrice, hasKush, members, items]);
+  }, [runName, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, houseMavo, houseAccounting, houseFamily, treasuryStandard, baseCourseAtStandard, multipliers, kushName, kushPrice, hasKush, members, items]);
 
   // Загрузить данные забега
   const loadRunData = useCallback((data: RunData) => {
@@ -163,7 +171,9 @@ function App() {
     setPredictorPercent(data.predictorPercent);
     setMercenaryCost(data.mercenaryCost);
     setLostMercenaries(data.lostMercenaries);
-    setTreasuryAmount(data.treasuryAmount);
+    setHouseMavo(data.houseMavo);
+    setHouseAccounting(data.houseAccounting);
+    setHouseFamily(data.houseFamily);
     setTreasuryStandard(data.treasuryStandard);
     setBaseCourseAtStandard(data.baseCourseAtStandard);
     setMultipliers(data.multipliers);
@@ -309,10 +319,38 @@ function App() {
 
   // === РАСЧЁТ ===
   const calc = useMemo(() => {
+    // Общий запас = сумма всех домов
+    const totalTreasury = houseMavo + houseAccounting + houseFamily;
+
     // 0. Текущий курс гильдейской монеты
     // Чем больше монет в обращении — тем выше курс (монета дешевле)
     // Чем меньше монет — тем ниже курс (монета дороже)
-    const currentRate = Math.max(1, baseCourseAtStandard * (treasuryAmount / treasuryStandard));
+    const currentRate = Math.max(1, baseCourseAtStandard * (totalTreasury / treasuryStandard));
+
+    // Статистика домов
+    const houseStats = {
+      mavo: {
+        amount: houseMavo,
+        percent: totalTreasury > 0 ? (houseMavo / totalTreasury) * 100 : 0,
+        color: 'purple',
+        icon: '🔮',
+        name: 'Дом Маво',
+      },
+      accounting: {
+        amount: houseAccounting,
+        percent: totalTreasury > 0 ? (houseAccounting / totalTreasury) * 100 : 0,
+        color: 'cyan',
+        icon: '📊',
+        name: 'Дом Бухгалтерии',
+      },
+      family: {
+        amount: houseFamily,
+        percent: totalTreasury > 0 ? (houseFamily / totalTreasury) * 100 : 0,
+        color: 'red',
+        icon: '🗡',
+        name: 'Дом Семьи',
+      },
+    };
 
     // 1. Сумма добычи
     let lootSum = 0;
@@ -382,12 +420,14 @@ function App() {
       totalGM,
       mercenaryCostGM,
       currentRate,
+      totalTreasury,
+      houseStats,
       perCategory,
       memberPayouts,
       totalShares,
       isInDebt: totalGM < 0,
     };
-  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, treasuryAmount, treasuryStandard, baseCourseAtStandard, members]);
+  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, houseMavo, houseAccounting, houseFamily, treasuryStandard, baseCourseAtStandard, members]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-3 md:p-5">
@@ -456,22 +496,67 @@ function App() {
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-0.5">
-                  Монет в гильдии: <span className="text-amber-400 font-semibold">{treasuryAmount.toLocaleString()}</span>
-                </label>
-                <input
-                  type="range"
-                  value={treasuryAmount}
-                  onChange={e => setTreasuryAmount(Math.max(0, Number(e.target.value)))}
-                  min="0"
-                  max="50000"
-                  step="500"
-                  className="w-full accent-amber-500"
-                />
-                <div className="flex justify-between text-xs text-gray-600 mt-0.5">
-                  <span>0</span>
-                  <span>50 000</span>
+              {/* Дома правления */}
+              <div className="space-y-3 pt-2 border-t border-gray-700">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs text-gray-400 font-semibold">🏛 Дома правления</label>
+                  <span className="text-xs text-amber-400 font-mono">
+                    Всего: {(houseMavo + houseAccounting + houseFamily).toLocaleString()} монет
+                  </span>
+                </div>
+
+                {/* Дом Маво */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs text-purple-400">🔮 Дом Маво</label>
+                    <span className="text-xs text-purple-300 font-mono">{houseMavo.toLocaleString()}</span>
+                  </div>
+                  <input
+                    type="range"
+                    value={houseMavo}
+                    onChange={e => setHouseMavo(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    max="20000"
+                    step="100"
+                    className="w-full accent-purple-500"
+                  />
+                  <p className="text-xs text-gray-600 mt-0.5">Маги и паранормальные существа</p>
+                </div>
+
+                {/* Дом Бухгалтерии */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs text-cyan-400">📊 Дом Бухгалтерии</label>
+                    <span className="text-xs text-cyan-300 font-mono">{houseAccounting.toLocaleString()}</span>
+                  </div>
+                  <input
+                    type="range"
+                    value={houseAccounting}
+                    onChange={e => setHouseAccounting(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    max="20000"
+                    step="100"
+                    className="w-full accent-cyan-500"
+                  />
+                  <p className="text-xs text-gray-600 mt-0.5">Взлом реальности, цифры и подсчёт</p>
+                </div>
+
+                {/* Дом Семьи */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs text-red-400">🗡 Дом Семьи</label>
+                    <span className="text-xs text-red-300 font-mono">{houseFamily.toLocaleString()}</span>
+                  </div>
+                  <input
+                    type="range"
+                    value={houseFamily}
+                    onChange={e => setHouseFamily(Math.max(0, Number(e.target.value)))}
+                    min="0"
+                    max="20000"
+                    step="100"
+                    className="w-full accent-red-500"
+                  />
+                  <p className="text-xs text-gray-600 mt-0.5">Классическая мафия</p>
                 </div>
               </div>
               <div>
@@ -815,12 +900,12 @@ function App() {
                   1 ГМ = {calc.currentRate.toFixed(1)} ед.
                 </span>
               </div>
-              {treasuryAmount < treasuryStandard && (
+              {calc.totalTreasury < treasuryStandard && (
                 <div className="text-xs text-green-400/70 text-center mb-1">
                   ↑ Монета дороже стандарта (дефицит)
                 </div>
               )}
-              {treasuryAmount > treasuryStandard && (
+              {calc.totalTreasury > treasuryStandard && (
                 <div className="text-xs text-red-400/70 text-center mb-1">
                   ↓ Монета дешевле стандарта (избыток)
                 </div>
@@ -907,6 +992,71 @@ function App() {
             </div>
           </div>
 
+          {/* Статистика домов */}
+          <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+            <h2 className="text-sm font-semibold text-amber-300 mb-2">🏛 Статистика домов</h2>
+            <div className="space-y-2">
+              {/* Визуальный барчарт */}
+              <div className="flex h-6 rounded overflow-hidden border border-gray-600">
+                {calc.houseStats.mavo.percent > 0 && (
+                  <div
+                    className="bg-purple-600 flex items-center justify-center text-xs text-white font-semibold"
+                    style={{ width: `${calc.houseStats.mavo.percent}%` }}
+                    title={`Дом Маво: ${calc.houseStats.mavo.amount} (${calc.houseStats.mavo.percent.toFixed(1)}%)`}
+                  >
+                    {calc.houseStats.mavo.percent > 15 && `${calc.houseStats.mavo.percent.toFixed(0)}%`}
+                  </div>
+                )}
+                {calc.houseStats.accounting.percent > 0 && (
+                  <div
+                    className="bg-cyan-600 flex items-center justify-center text-xs text-white font-semibold"
+                    style={{ width: `${calc.houseStats.accounting.percent}%` }}
+                    title={`Дом Бухгалтерии: ${calc.houseStats.accounting.amount} (${calc.houseStats.accounting.percent.toFixed(1)}%)`}
+                  >
+                    {calc.houseStats.accounting.percent > 15 && `${calc.houseStats.accounting.percent.toFixed(0)}%`}
+                  </div>
+                )}
+                {calc.houseStats.family.percent > 0 && (
+                  <div
+                    className="bg-red-600 flex items-center justify-center text-xs text-white font-semibold"
+                    style={{ width: `${calc.houseStats.family.percent}%` }}
+                    title={`Дом Семьи: ${calc.houseStats.family.amount} (${calc.houseStats.family.percent.toFixed(1)}%)`}
+                  >
+                    {calc.houseStats.family.percent > 15 && `${calc.houseStats.family.percent.toFixed(0)}%`}
+                  </div>
+                )}
+              </div>
+
+              {/* Детальная статистика */}
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-purple-400">🔮 Дом Маво</span>
+                  <span className="font-mono text-purple-300">
+                    {calc.houseStats.mavo.amount.toLocaleString()} ({calc.houseStats.mavo.percent.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-cyan-400">📊 Дом Бухгалтерии</span>
+                  <span className="font-mono text-cyan-300">
+                    {calc.houseStats.accounting.amount.toLocaleString()} ({calc.houseStats.accounting.percent.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-red-400">🗡 Дом Семьи</span>
+                  <span className="font-mono text-red-300">
+                    {calc.houseStats.family.amount.toLocaleString()} ({calc.houseStats.family.percent.toFixed(1)}%)
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-1 mt-1 border-t border-gray-700">
+                  <span className="text-gray-400 font-semibold">Всего в гильдии</span>
+                  <span className="font-mono text-amber-400 font-semibold">
+                    {calc.totalTreasury.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Распределение */}
           <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
             <h2 className="text-sm font-semibold text-amber-300 mb-2">💵 Распределение</h2>
@@ -941,6 +1091,7 @@ function App() {
           <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
             <h3 className="text-xs font-semibold text-gray-500 mb-1.5">💡 Формула расчёта</h3>
             <div className="text-xs text-gray-600 space-y-0.5 font-mono">
+              <p>казна = Маво + Бухгалтерия + Семья</p>
               <p>курс = базовый × (казна ÷ стандарт)</p>
               <p>добыча = Σ(цена × кол × множ) + куш</p>
               <p>с_бонусом = добыча × (1 + бонус%)</p>
