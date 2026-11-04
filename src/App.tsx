@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
 // === ТИПЫ ===
 type ItemCategory = 'обычное' | 'дорогое' | 'редкое' | 'люди' | 'артефакты';
@@ -16,6 +16,30 @@ interface PartyMember {
   id: string;
   name: string;
   sharePercent: number;
+}
+
+interface SavedRun {
+  id: string;
+  name: string;
+  timestamp: number;
+  data: RunData;
+}
+
+interface RunData {
+  runName: string;
+  cleanRunBonus: number;
+  predictorPercent: number;
+  mercenaryCost: number;
+  lostMercenaries: number;
+  treasuryAmount: number;
+  treasuryStandard: number;
+  baseCourseAtStandard: number;
+  multipliers: Record<ItemCategory, number>;
+  kushName: string;
+  kushPrice: number;
+  hasKush: boolean;
+  members: PartyMember[];
+  items: Item[];
 }
 
 // === КОНСТАНТЫ ===
@@ -93,6 +117,138 @@ function App() {
     { id: '2', name: 'Золотой перстень', category: 'дорогое', basePrice: 12, quantity: 1, stolen: true },
     { id: '3', name: 'Зашифрованный свиток', category: 'редкое', basePrice: 20, quantity: 1, stolen: true },
   ]);
+
+  // --- Сохранение/загрузка ---
+  const [savedRuns, setSavedRuns] = useState<SavedRun[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Загрузка сохранённых забегов из localStorage при старте
+  useEffect(() => {
+    const saved = localStorage.getItem('savedRuns');
+    if (saved) {
+      try {
+        setSavedRuns(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load saved runs:', e);
+      }
+    }
+  }, []);
+
+  // Получить текущие данные забега
+  const getCurrentRunData = useCallback((): RunData => {
+    return {
+      runName,
+      cleanRunBonus,
+      predictorPercent,
+      mercenaryCost,
+      lostMercenaries,
+      treasuryAmount,
+      treasuryStandard,
+      baseCourseAtStandard,
+      multipliers,
+      kushName,
+      kushPrice,
+      hasKush,
+      members,
+      items,
+    };
+  }, [runName, cleanRunBonus, predictorPercent, mercenaryCost, lostMercenaries, treasuryAmount, treasuryStandard, baseCourseAtStandard, multipliers, kushName, kushPrice, hasKush, members, items]);
+
+  // Загрузить данные забега
+  const loadRunData = useCallback((data: RunData) => {
+    setRunName(data.runName);
+    setCleanRunBonus(data.cleanRunBonus);
+    setPredictorPercent(data.predictorPercent);
+    setMercenaryCost(data.mercenaryCost);
+    setLostMercenaries(data.lostMercenaries);
+    setTreasuryAmount(data.treasuryAmount);
+    setTreasuryStandard(data.treasuryStandard);
+    setBaseCourseAtStandard(data.baseCourseAtStandard);
+    setMultipliers(data.multipliers);
+    setKushName(data.kushName);
+    setKushPrice(data.kushPrice);
+    setHasKush(data.hasKush);
+    setMembers(data.members);
+    setItems(data.items);
+  }, []);
+
+  // Сохранить текущий забег
+  const saveCurrentRun = useCallback(() => {
+    const newRun: SavedRun = {
+      id: Date.now().toString(),
+      name: runName,
+      timestamp: Date.now(),
+      data: getCurrentRunData(),
+    };
+    const updated = [...savedRuns, newRun];
+    setSavedRuns(updated);
+    localStorage.setItem('savedRuns', JSON.stringify(updated));
+  }, [runName, savedRuns, getCurrentRunData]);
+
+  // Загрузить забег по ID
+  const loadRun = useCallback((id: string) => {
+    const run = savedRuns.find(r => r.id === id);
+    if (run) {
+      loadRunData(run.data);
+      setShowSaveModal(false);
+    }
+  }, [savedRuns, loadRunData]);
+
+  // Удалить забег
+  const deleteRun = useCallback((id: string) => {
+    const updated = savedRuns.filter(r => r.id !== id);
+    setSavedRuns(updated);
+    localStorage.setItem('savedRuns', JSON.stringify(updated));
+  }, [savedRuns]);
+
+  // Экспорт в JSON файл
+  const exportToFile = useCallback(() => {
+    const data = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      runs: savedRuns,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `guild-runs-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [savedRuns]);
+
+  // Импорт из JSON файла
+  const importFromFile = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const data = JSON.parse(content);
+        if (data.runs && Array.isArray(data.runs)) {
+          const merged = [...savedRuns, ...data.runs];
+          setSavedRuns(merged);
+          localStorage.setItem('savedRuns', JSON.stringify(merged));
+          alert(`Импортировано ${data.runs.length} забегов`);
+        } else {
+          alert('Неверный формат файла');
+        }
+      } catch (error) {
+        alert('Ошибка при чтении файла');
+      }
+    };
+    reader.readAsText(file);
+    
+    // Сброс input для возможности повторной загрузки того же файла
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [savedRuns]);
 
   // --- Функции для предметов ---
   const addItem = useCallback(() => {
@@ -229,6 +385,39 @@ function App() {
         </h1>
         <p className="text-gray-500 text-xs mt-0.5">Экономика воров и наёмников</p>
       </header>
+
+      {/* Панель управления сохранением */}
+      <div className="max-w-7xl mx-auto mb-3 flex flex-wrap gap-2 items-center justify-center">
+        <button
+          onClick={saveCurrentRun}
+          className="bg-green-700 hover:bg-green-600 text-white text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1"
+        >
+          💾 Сохранить забег
+        </button>
+        <button
+          onClick={() => setShowSaveModal(true)}
+          className="bg-blue-700 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1"
+        >
+          📂 Загрузить ({savedRuns.length})
+        </button>
+        <button
+          onClick={exportToFile}
+          disabled={savedRuns.length === 0}
+          className="bg-purple-700 hover:bg-purple-600 disabled:bg-gray-700 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1"
+        >
+          📤 Экспорт
+        </button>
+        <label className="bg-orange-700 hover:bg-orange-600 text-white text-xs px-3 py-1.5 rounded transition-colors flex items-center gap-1 cursor-pointer">
+          📥 Импорт
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={importFromFile}
+            className="hidden"
+          />
+        </label>
+      </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3">
 
@@ -743,6 +932,66 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно загрузки */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setShowSaveModal(false)}>
+          <div className="bg-gray-800 rounded-lg border border-gray-600 max-w-lg w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-3 border-b border-gray-700">
+              <h2 className="text-sm font-semibold text-amber-300">📂 Сохранённые забеги</h2>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="text-gray-400 hover:text-white text-lg"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {savedRuns.length === 0 ? (
+                <p className="text-gray-500 text-center py-8 text-sm">Нет сохранённых забегов</p>
+              ) : (
+                <div className="space-y-2">
+                  {savedRuns.map(run => (
+                    <div key={run.id} className="bg-gray-700/50 rounded p-2 flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-gray-200 truncate">{run.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(run.timestamp).toLocaleString('ru-RU')}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => loadRun(run.id)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2 py-1 rounded transition-colors shrink-0"
+                      >
+                        Загрузить
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Удалить забег "${run.name}"?`)) {
+                            deleteRun(run.id);
+                          }
+                        }}
+                        className="text-red-400 hover:text-red-300 text-sm shrink-0 px-1"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-3 border-t border-gray-700 flex justify-between items-center">
+              <span className="text-xs text-gray-500">Всего: {savedRuns.length}</span>
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="bg-gray-600 hover:bg-gray-500 text-white text-xs px-3 py-1.5 rounded transition-colors"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
