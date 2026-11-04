@@ -60,11 +60,15 @@ const DEFAULT_NAMES = [
 function App() {
   // --- Параметры забега ---
   const [runName, setRunName] = useState('Забег #1');
-  const [baseRate, setBaseRate] = useState(10);
   const [cleanRunBonus, setCleanRunBonus] = useState(0);
   const [predictorPercent, setPredictorPercent] = useState(0);
   const [mercenaryCost, setMercenaryCost] = useState(50);
   const [lostMercenaries, setLostMercenaries] = useState(0);
+
+  // --- Казна гильдии (динамический курс) ---
+  const [treasuryAmount, setTreasuryAmount] = useState(10000); // текущее кол-во монет в обращении
+  const [treasuryStandard, setTreasuryStandard] = useState(10000); // стандарт (при котором курс = базовому)
+  const [baseCourseAtStandard, setBaseCourseAtStandard] = useState(10); // курс при стандарте (ед. за 1 ГМ)
 
   // --- Множители ---
   const [multipliers, setMultipliers] = useState<Record<ItemCategory, number>>(DEFAULT_MULTIPLIERS);
@@ -136,6 +140,11 @@ function App() {
 
   // === РАСЧЁТ ===
   const calc = useMemo(() => {
+    // 0. Текущий курс гильдейской монеты
+    // Чем больше монет в обращении — тем выше курс (монета дешевле)
+    // Чем меньше монет — тем ниже курс (монета дороже)
+    const currentRate = Math.max(1, baseCourseAtStandard * (treasuryAmount / treasuryStandard));
+
     // 1. Сумма добычи
     let lootSum = 0;
     const perCategory: Record<ItemCategory, { count: number; value: number }> = {
@@ -175,11 +184,11 @@ function App() {
     const distributable = afterPenalty - predictorCut;
 
     // 8. В гильдейских монетах (всегда целые, округление вниз)
-    const totalGM = Math.floor(distributable / baseRate);
-    const penaltyGM = Math.floor(penalty / baseRate);
-    const predictorGM = Math.floor(predictorCut / baseRate);
-    const lootWithBonusGM = Math.floor(lootWithBonus / baseRate);
-    const mercenaryCostGM = Math.floor(mercenaryCost / baseRate);
+    const totalGM = Math.floor(distributable / currentRate);
+    const penaltyGM = Math.floor(penalty / currentRate);
+    const predictorGM = Math.floor(predictorCut / currentRate);
+    const lootWithBonusGM = Math.floor(lootWithBonus / currentRate);
+    const mercenaryCostGM = Math.floor(mercenaryCost / currentRate);
 
     // 9. Распределение по участникам (каждый получает целое число ГМ)
     const totalShares = members.reduce((s, m) => s + m.sharePercent, 0);
@@ -203,12 +212,13 @@ function App() {
       distributable,
       totalGM,
       mercenaryCostGM,
+      currentRate,
       perCategory,
       memberPayouts,
       totalShares,
       isInDebt: totalGM < 0,
     };
-  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, baseRate, members]);
+  }, [items, multipliers, hasKush, kushPrice, cleanRunBonus, mercenaryCost, lostMercenaries, predictorPercent, treasuryAmount, treasuryStandard, baseCourseAtStandard, members]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-3 md:p-5">
@@ -239,13 +249,45 @@ function App() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-0.5">Курс: 1 ГМ = ? ед.</label>
+                <label className="block text-xs text-gray-400 mb-0.5">
+                  Монет в гильдии: <span className="text-amber-400 font-semibold">{treasuryAmount.toLocaleString()}</span>
+                </label>
+                <input
+                  type="range"
+                  value={treasuryAmount}
+                  onChange={e => setTreasuryAmount(Math.max(0, Number(e.target.value)))}
+                  min="0"
+                  max="50000"
+                  step="500"
+                  className="w-full accent-amber-500"
+                />
+                <div className="flex justify-between text-xs text-gray-600 mt-0.5">
+                  <span>0</span>
+                  <span>50 000</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-0.5">Стандарт казны (референс)</label>
                 <input
                   type="number"
-                  value={baseRate}
-                  onChange={e => setBaseRate(Math.max(0.1, Number(e.target.value)))}
-                  min="0.1"
-                  step="0.5"
+                  value={treasuryStandard}
+                  onChange={e => setTreasuryStandard(Math.max(1, Number(e.target.value)))}
+                  min="1"
+                  step="1000"
+                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
+                />
+                <p className="text-xs text-gray-600 mt-0.5">
+                  При {treasuryStandard.toLocaleString()} монет курс = {baseCourseAtStandard} ед./ГМ
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-0.5">Базовый курс (при стандарте)</label>
+                <input
+                  type="number"
+                  value={baseCourseAtStandard}
+                  onChange={e => setBaseCourseAtStandard(Math.max(1, Number(e.target.value)))}
+                  min="1"
+                  step="1"
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-amber-500"
                 />
               </div>
@@ -559,6 +601,22 @@ function App() {
               💰 Итоги: {runName}
             </h2>
             <div className="space-y-1 text-xs">
+              <div className="flex justify-between items-center pb-1 mb-1 border-b border-gray-700">
+                <span className="text-gray-400">Текущий курс:</span>
+                <span className="font-mono text-amber-400 font-semibold">
+                  1 ГМ = {calc.currentRate.toFixed(1)} ед.
+                </span>
+              </div>
+              {treasuryAmount < treasuryStandard && (
+                <div className="text-xs text-green-400/70 text-center mb-1">
+                  ↑ Монета дороже стандарта (дефицит)
+                </div>
+              )}
+              {treasuryAmount > treasuryStandard && (
+                <div className="text-xs text-red-400/70 text-center mb-1">
+                  ↓ Монета дешевле стандарта (избыток)
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-gray-400">Добыча (база):</span>
                 <span className="font-mono text-gray-300">{calc.lootSum.toFixed(0)} ед.</span>
@@ -675,11 +733,12 @@ function App() {
           <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
             <h3 className="text-xs font-semibold text-gray-500 mb-1.5">💡 Формула расчёта</h3>
             <div className="text-xs text-gray-600 space-y-0.5 font-mono">
-              <p>добыча = Σ(цена × кол × множитель) + куш</p>
+              <p>курс = базовый × (казна ÷ стандарт)</p>
+              <p>добыча = Σ(цена × кол × множ) + куш</p>
               <p>с_бонусом = добыча × (1 + бонус%)</p>
               <p>после_штрафов = с_бонусом − (цена × погибшие)</p>
               <p>итог = после_штрафов × (1 − предсказатель%)</p>
-              <p>каждый = итог ÷ курс × (доля% ÷ Σдолей)</p>
+              <p>каждый = ⌊итог ÷ курс × (доля% ÷ Σдолей)⌋</p>
             </div>
           </div>
         </div>
